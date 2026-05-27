@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_datalake">#F0F4F8</color>       <color name="surface_card">#FFFFFF</color>     <color name="nhai_navy">#1B3A6B</color>        <color name="button_blue">#1E3A5F</color>      <color name="text_dark_slate">#1A1A2E</color>  <color name="text_muted_grey">#666666</color>  <color name="indicator_green">#28A745</color>  <color name="indicator_red">#DC3545</color>    <color name="indicator_yellow">#EAB308</color> <color name="divider_slate">#E2E8F0</color>    </resources>

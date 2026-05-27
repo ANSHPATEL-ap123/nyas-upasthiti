@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.NyasUpasthiti" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/nhai_navy</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="android:windowBackground">@color/bg_datalake</item>
+
+        <item name="android:statusBarColor">@color/surface_card</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

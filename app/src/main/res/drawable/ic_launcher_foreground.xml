@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Sophisticated golden biometric frame brackets -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 34,24 L 24,24 L 24,34 M 74,24 L 84,24 L 84,34 M 24,74 L 24,84 L 34,84 M 84,74 L 84,84 L 74,84" />
+    <!-- Emerald teal scanning authentication target -->
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="3"
+        android:pathData="M 54,34 A 20,20 0 1,0 54,74 A 20,20 0 1,0 54,34 M 54,41 A 13,13 0 1,0 54,67 A 13,13 0 1,0 54,41" />
+    <!-- Saffron authorization locked key checkmark -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M 50,54 L 53,57 L 59,51 L 61,53 L 53,61 L 48,56 Z" />
+</vector>
