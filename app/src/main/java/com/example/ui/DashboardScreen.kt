@@ -35,13 +35,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.data.model.TransactionLog
-import com.example.R // Dhyan rakhna ye import zaroori hai images load karne ke liye
 
 // Local Error-Free Structural Model for Workforce Registration Profiles
 data class LocalWorkerProfile(
     val id: String,
     val name: String,
     val projectCode: String,
+    val dailyCheckIn: String = "09:00 AM",
+    val dailyCheckOut: String = "06:15 PM",
+    val monthlyRatio: String = "96.4%",
+    val totalHours: String = "176.5 Hrs",
     val biometricStatus: String = "Active Vector Loaded",
     val accessibilityMode: String = "Standard Mode (0)"
 )
@@ -83,6 +86,11 @@ fun DashboardScreen(
     var captchaInput by remember { mutableStateOf("") }
     var isRoleExpanded by remember { mutableStateOf(false) }
 
+    // CAPTCHA Refresh State parameters
+    val captchaList = remember { listOf("pBmcSL", "xK7wN2", "mR9vP4", "qZ3fT8", "vY5bX1") }
+    var captchaIndex by remember { mutableStateOf(0) }
+    val currentCaptchaString = captchaList[captchaIndex]
+
     var selectedDetailLog by remember { mutableStateOf<TransactionLog?>(null) }
     var showConfirmResetDialog by remember { mutableStateOf(false) }
 
@@ -95,11 +103,11 @@ fun DashboardScreen(
     var activeWorkersRegistryList by remember {
         mutableStateOf(
             listOf(
-                LocalWorkerProfile("EMP101", "Amit Kumar", "NHAI-DEL-MUM-01"),
-                LocalWorkerProfile("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02"),
-                LocalWorkerProfile("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR"),
-                LocalWorkerProfile("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY"),
-                LocalWorkerProfile("EMP105", "Vikram Singh", "NHAI-EAST-EXPRESS")
+                LocalWorkerProfile("EMP101", "Amit Kumar", "NHAI-DEL-MUM-01", "08:58 AM", "06:05 PM", "97.2%", "180.5 Hrs"),
+                LocalWorkerProfile("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", "09:02 AM", "06:12 PM", "95.8%", "172.0 Hrs"),
+                LocalWorkerProfile("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", "08:45 AM", "05:55 PM", "98.1%", "184.0 Hrs"),
+                LocalWorkerProfile("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", "09:15 AM", "06:30 PM", "94.5%", "168.5 Hrs"),
+                LocalWorkerProfile("EMP105", "Vikram Singh", "NHAI-EAST-EXPRESS", "08:55 AM", "06:00 PM", "96.7%", "178.0 Hrs")
             )
         )
     }
@@ -175,21 +183,13 @@ fun DashboardScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-
-                        // ===== YAHAN CHANGE KIYA HAI =====
-                        // Purane AddRoad icon ki jagah NHAI ka actual logo lagaya hai
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_nhai_logo),
-                                contentDescription = "NHAI Logo",
-                                modifier = Modifier.size(50.dp) // Logo ka size adjust kiya hai
-                            )
+                            Icon(imageVector = Icons.Default.AddRoad, contentDescription = "NHAI", tint = nhaiBlue, modifier = Modifier.size(40.dp))
                             Column {
                                 Text("भारतीय राष्ट्रीय राजमार्ग प्राधिकरण", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
                                 Text("NHAI GOVT OF INDIA", fontSize = 10.sp, letterSpacing = 1.sp, color = Color.Gray)
                             }
                         }
-                        // ===================================
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Welcome to", fontSize = 20.sp, color = Color.Gray, textAlign = TextAlign.Center)
@@ -248,7 +248,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SCREEN 2: PORTAL LOGIN / SIGN IN VIEW (Black Text Enforced)
+    // SCREEN 2: PORTAL LOGIN / SIGN IN VIEW
     // =========================================================================
     else if (currentScreenState == AppNavigationState.PORTAL_LOGIN) {
         Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
@@ -284,7 +284,6 @@ fun DashboardScreen(
                                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.Gray) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                textStyle = visibleBlackTextStyle,
                                 colors = inputFieldColors
                             )
                             Box(modifier = Modifier.matchParentSize().clickable { isRoleExpanded = true })
@@ -327,9 +326,16 @@ fun DashboardScreen(
                         )
 
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // FIXED LINE 316: Correct weight calculation applied smoothly to clear compiler error
-                            Box(modifier = Modifier.weight(1f).height(50.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF334155)), contentAlignment = Alignment.Center) {
-                                Text("pBmcSL", fontFamily = FontFamily.Cursive, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White, letterSpacing = 3.sp)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF334155))
+                                    .clickable { captchaIndex = (captchaIndex + 1) % captchaList.size },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(currentCaptchaString, fontFamily = FontFamily.Cursive, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White, letterSpacing = 3.sp)
                             }
                             OutlinedTextField(
                                 value = captchaInput,
@@ -369,13 +375,13 @@ fun DashboardScreen(
                                 if (selectedRole == "ADMIN") {
                                     usernameInput = "admin_portal"
                                     passwordInput = "nhai_admin_secure"
-                                    captchaInput = "pBmcSL"
+                                    captchaInput = currentCaptchaString
                                     lastWorkspaceOrigin = AppNavigationState.ADMIN_WORKSPACE
                                     currentScreenState = AppNavigationState.ADMIN_WORKSPACE
                                 } else {
                                     usernameInput = "field_user"
                                     passwordInput = "nhai_user_access"
-                                    captchaInput = "pBmcSL"
+                                    captchaInput = currentCaptchaString
                                     lastWorkspaceOrigin = AppNavigationState.USER_WORKSPACE
                                     currentScreenState = AppNavigationState.USER_WORKSPACE
                                 }
@@ -404,7 +410,7 @@ fun DashboardScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("DataLake 3.0: ADMIN CORE CONTROL", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) },
+                    title = { Text("DataLake 3.0: ADMIN MASTER SYSTEM", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) },
                     actions = {
                         IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
@@ -416,20 +422,21 @@ fun DashboardScreen(
         ) { paddingValues ->
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
 
-                TabRow(selectedTabIndex = selectedAdminTab, containerColor = Color.White, contentColor = nhaiBlue) {
-                    Tab(selected = selectedAdminTab == 0, onClick = { selectedAdminTab = 0 }, text = { Text("Core Tools", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 1, onClick = { selectedAdminTab = 1 }, text = { Text("Attendance Records", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Manual Overwrite", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
+                ScrollableTabRow(selectedTabIndex = selectedAdminTab, containerColor = Color.White, contentColor = nhaiBlue, edgePadding = 16.dp) {
+                    Tab(selected = selectedAdminTab == 0, onClick = { selectedAdminTab = 0 }, text = { Text("Core Tools", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 1, onClick = { selectedAdminTab = 1 }, text = { Text("Daily Logs", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Manual Overwrite", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 3, onClick = { selectedAdminTab = 3 }, text = { Text("Monthly Report", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
                 }
 
-                Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(20.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp)) {
                     when (selectedAdminTab) {
                         0 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                                 Text("Deploy Functional Pipeline Architectures Below:", fontSize = 13.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
                                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                                     Column(modifier = Modifier.padding(16.dp)) {
-                                        HelpTopicRow(Icons.Default.AccountBox, "Attendance Matrix Engine", "Execute field biometric face scanning algorithms", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
+                                        HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute biometric face scanning check-in logs", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
                                         HelpTopicRow(Icons.Default.NetworkCheck, "RFI Geolocation Ledger", "Logs Storage telemetry transaction tables database", onClick = { currentScreenState = AppNavigationState.TASK_RFI_LEDGER })
                                         HelpTopicRow(Icons.Default.Security, "Safety Audit / Cryptography Key", "Secured AES-128 configuration parameters block", onClick = { currentScreenState = AppNavigationState.TASK_SAFETY_AUDIT })
                                         HelpTopicRow(Icons.Default.Build, "Maintenance Engine Sandbox", "Bypass physical hardware metrics directly", onClick = { currentScreenState = AppNavigationState.TASK_MAINTENANCE_SANDBOX })
@@ -441,18 +448,18 @@ fun DashboardScreen(
                         }
                         1 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Workforce Attendance Database Ledgers:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = nhaiBlue)
+                                Text("Personnel Daily Shift Log Index (Admin Overview Mode):", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
                                 Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                                     Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         activeWorkersRegistryList.forEach { employee ->
                                             Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp)).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                                 Column {
                                                     Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
-                                                    Text("Registry Node ID: ${employee.id}", fontSize = 11.sp, color = Color.Gray)
+                                                    Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
                                                 }
                                                 Column(horizontalAlignment = Alignment.End) {
-                                                    Text("Daily State: PRESENT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
-                                                    Text("Monthly Ratio: 97.2%", fontSize = 10.sp, color = nhaiBlue)
+                                                    Text("In: ${employee.dailyCheckIn}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
+                                                    Text("Out: ${employee.dailyCheckOut}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
                                                 }
                                             }
                                         }
@@ -499,6 +506,26 @@ fun DashboardScreen(
                                 }
                             }
                         }
+                        3 -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Workforce Cumulative Monthly Attendance Analytics Report:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
+                                Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFCBD5E1))) {
+                                    Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        activeWorkersRegistryList.forEach { employee ->
+                                            Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Column {
+                                                    Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                                                    Text("Total Cumulative Time: ${employee.totalHours}", fontSize = 11.sp, color = Color.DarkGray)
+                                                }
+                                                Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF28A745)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                                    Text("Ratio: ${employee.monthlyRatio}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -530,13 +557,38 @@ fun DashboardScreen(
                 ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.5.dp, Color(0xFF1B3A6B).copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = Color(0xFF1B3A6B))
+                                Text("Your Personal Daily Shift Activity Logs", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color.Black)
+                            }
+                            HorizontalDivider(color = Color(0xFFE2E8F0))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column {
+                                    Text("DAILY LOG-IN TIME", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text("09:00 AM (ISO Verified)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF28A745))
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("DAILY LOG-OUT TIME", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text("06:15 PM (Terminal Lock)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                                }
+                            }
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White)
                     ) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text("Operational System Verification Controls:", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
-                                HelpTopicRow(Icons.Default.AccountBox, "Attendance Matrix Engine", "Execute field biometric face scanning algorithms", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
+                                HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute field scan tracking verification loop algorithms", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
                                 HelpTopicRow(Icons.Default.Hub, "UCC / NHAI Data Lake 3.0", "Sync local queue packets to central cloud", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
                                 HelpTopicRow(Icons.Default.VerifiedUser, "Login & Biometric Registration", "Inspect loaded offline credentials index arrays", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
                             }
@@ -557,7 +609,7 @@ fun DashboardScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Biometric Terminal Lens", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    title = { Text("Mark Attendance Terminal Lens", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
                     actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
@@ -732,7 +784,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 6: AUTHORIZED WORKFORCE REGISTRATION (Glitches Fixed completely!)
+    // SUB-PAGE 6: AUTHORIZED WORKFORCE REGISTRATION
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_BIOMETRIC_REGISTRATION) {
         Scaffold(
@@ -752,7 +804,6 @@ fun DashboardScreen(
                 ) {
                     Text("Authorized Personnel Registry Profiles Load Nodes:", fontSize = 14.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
 
-                    // ADMIN ENROLLMENT DRAWER INTERFACE (CRUD Feature: ADD)
                     if (lastWorkspaceOrigin == AppNavigationState.ADMIN_WORKSPACE) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -779,7 +830,6 @@ fun DashboardScreen(
                                             onValueChange = { newWorkerName = it },
                                             label = { Text("Worker Full Name") },
                                             modifier = Modifier.fillMaxWidth(),
-                                            textStyle = visibleBlackTextStyle,
                                             colors = inputFieldColors,
                                             singleLine = true
                                         )
@@ -788,7 +838,6 @@ fun DashboardScreen(
                                             onValueChange = { newWorkerId = it },
                                             label = { Text("Unique Register ID (e.g. EMP106)") },
                                             modifier = Modifier.fillMaxWidth(),
-                                            textStyle = visibleBlackTextStyle,
                                             colors = inputFieldColors,
                                             singleLine = true
                                         )
@@ -797,7 +846,6 @@ fun DashboardScreen(
                                             onValueChange = { newWorkerSite = it },
                                             label = { Text("Assigned Project Site Corridor") },
                                             modifier = Modifier.fillMaxWidth(),
-                                            textStyle = visibleBlackTextStyle,
                                             colors = inputFieldColors,
                                             singleLine = true
                                         )
@@ -828,7 +876,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // PROFILE LAYOUT STREAM (Clicking card launches popup sheet, clicking link triggers scanner)
                     Column(
                         modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -837,7 +884,7 @@ fun DashboardScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { inspectedWorkerProfile = emp }, // Clicks on the general card area securely trigger the profile modal sheet
+                                    .clickable { inspectedWorkerProfile = emp },
                                 colors = CardDefaults.cardColors(containerColor = Color.White),
                                 border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                             ) {
@@ -852,7 +899,6 @@ fun DashboardScreen(
                                     }
 
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        // ADMIN PURGING DELETE TRIGGER CONTROL
                                         if (lastWorkspaceOrigin == AppNavigationState.ADMIN_WORKSPACE) {
                                             IconButton(
                                                 onClick = {
@@ -866,7 +912,6 @@ fun DashboardScreen(
                                             }
                                         }
 
-                                        // Segregated link context targeting verification loops natively
                                         Text(
                                             text = "Select Worker ➔",
                                             fontSize = 12.sp,
@@ -907,6 +952,17 @@ fun DashboardScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     HorizontalDivider(color = Color(0xFFE2E8F0))
 
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("DAILY IN TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(profile.dailyCheckIn, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("DAILY OUT TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(profile.dailyCheckOut, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                        }
+                    }
+
                     Column {
                         Text("REGISTRATION CODE MATRIX INDEX", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                         Text(profile.id, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.Black)
@@ -918,10 +974,6 @@ fun DashboardScreen(
                     Column {
                         Text("OFFLINE EMBEDDING VECTOR STATUS", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                         Text(profile.biometricStatus, fontSize = 12.sp, color = Color(0xFF0088FF), fontWeight = FontWeight.SemiBold)
-                    }
-                    Column {
-                        Text("PWD ACCESSIBILITY OVERRIDE MODE (PWD PROTOCOL)", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                        Text(profile.accessibilityMode, fontSize = 12.sp, color = Color.DarkGray)
                     }
 
                     HorizontalDivider(color = Color(0xFFE2E8F0))
