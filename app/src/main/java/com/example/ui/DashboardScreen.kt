@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.data.model.Employee
 import com.example.data.model.TransactionLog
+import com.example.R // Dhyan rakhna ye import zaroori hai images load karne ke liye
 
 // Enterprise Application Core Navigation Router State Matrix
 enum class AppNavigationState {
@@ -133,13 +134,21 @@ fun DashboardScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
+
+                        // ===== YAHAN CHANGE KIYA HAI =====
+                        // Purane AddRoad icon ki jagah NHAI ka actual logo lagaya hai
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Icon(imageVector = Icons.Default.AddRoad, contentDescription = "NHAI", tint = nhaiBlue, modifier = Modifier.size(40.dp))
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_nhai_logo),
+                                contentDescription = "NHAI Logo",
+                                modifier = Modifier.size(50.dp) // Logo ka size adjust kiya hai
+                            )
                             Column {
                                 Text("भारतीय राष्ट्रीय राजमार्ग प्राधिकरण", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
                                 Text("NHAI GOVT OF INDIA", fontSize = 10.sp, letterSpacing = 1.sp, color = Color.Gray)
                             }
                         }
+                        // ===================================
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Welcome to", fontSize = 20.sp, color = Color.Gray, textAlign = TextAlign.Center)
