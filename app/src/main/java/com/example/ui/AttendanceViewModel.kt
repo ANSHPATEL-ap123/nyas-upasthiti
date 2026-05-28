@@ -1,6 +1,10 @@
 package com.example.ui
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
@@ -57,6 +61,26 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _uiState = MutableStateFlow(AttendanceUiState())
     val uiState: StateFlow<AttendanceUiState> = _uiState.asStateFlow()
 
+    // Background auto-sync: timestamp of last successful sync
+    private val _lastSyncTimestamp = MutableStateFlow(0L)
+    val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
+
+    // Connectivity callback for auto-sync
+    private val connectivityManager =
+        application.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            // Network became available — trigger background sync of unsynced records
+            viewModelScope.launch {
+                val pending = unsyncedLogs.value
+                if (pending.isNotEmpty() && !_uiState.value.isSyncing) {
+                    syncOfflineQueue()
+                }
+            }
+        }
+    }
+
     // Flow streams observed by Compose UI
     val employees: StateFlow<List<Employee>> = repository.allEmployees
         .stateIn(
@@ -85,6 +109,25 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         // Prepopulate standard worker profiles on first load
         viewModelScope.launch {
             repository.checkAndPrepopulate()
+        }
+
+        // Register network callback for background auto-sync
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        try {
+            connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+        } catch (_: Exception) {
+            // Graceful fallback if registration fails (e.g., no permission)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) {
+            // Already unregistered or never registered
         }
     }
 
@@ -423,7 +466,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * Phase 4: Mock network sync
+     * Phase 4: Mock network sync — also called automatically by network callback
      */
     fun syncOfflineQueue() {
         viewModelScope.launch {
@@ -431,6 +474,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             _uiState.update { it.copy(isSyncing = true) }
             delay(2000) // Simulated connection and upload latency
             repository.syncLogsToServer()
+            _lastSyncTimestamp.value = System.currentTimeMillis()
             _uiState.update {
                 it.copy(
                     isSyncing = false,
