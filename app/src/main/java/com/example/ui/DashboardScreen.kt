@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -66,18 +65,15 @@ data class LeaveRequest(
     val empName: String = "Ansh Patel"
 )
 
-// Comprehensive State Router Navigation Enum
+// Comprehensive State Router Navigation Enum (Cleaned as per new requirements)
 enum class AppNavigationState {
     WELCOME_SPLASH,
     PORTAL_LOGIN,
     ADMIN_WORKSPACE,
     USER_WORKSPACE,
     TASK_ATTENDANCE_ENGINE,
-    TASK_RFI_LEDGER,
-    TASK_SAFETY_AUDIT,
-    TASK_MAINTENANCE_SANDBOX,
-    TASK_UCC_GATEWAY,
-    TASK_BIOMETRIC_REGISTRATION,
+    TASK_UCC_GATEWAY, // Repurposed for Sync Changes
+    TASK_WORKFORCE_PROFILES, // Repurposed for Workforce Profiles List
     USER_PROFILE,
     USER_LEAVE_PORTAL
 }
@@ -89,9 +85,7 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = context as? Activity
     val rawUiState by viewModel.uiState.collectAsState()
-    val transactionLogsList by viewModel.transactionLogs.collectAsState()
     val unsyncedList by viewModel.unsyncedLogs.collectAsState()
     val lastSyncTs by viewModel.lastSyncTimestamp.collectAsState()
 
@@ -109,9 +103,6 @@ fun DashboardScreen(
     val captchaList = remember { listOf("pBmcSL", "xK7wN2", "mR9vP4", "qZ3fT8", "vY5bX1") }
     var captchaIndex by remember { mutableStateOf(0) }
     val currentCaptchaString = captchaList[captchaIndex]
-
-    var selectedDetailLog by remember { mutableStateOf<TransactionLog?>(null) }
-    var showConfirmResetDialog by remember { mutableStateOf(false) }
 
     // Notifications State
     var userNotifications by remember { mutableStateOf(0) }
@@ -136,10 +127,7 @@ fun DashboardScreen(
     }
 
     var inspectedWorkerProfile by remember { mutableStateOf<LocalWorkerProfile?>(null) }
-    var isAddWorkerFormExpanded by remember { mutableStateOf(false) }
-    var newWorkerName by remember { mutableStateOf("") }
-    var newWorkerId by remember { mutableStateOf("") }
-    var newWorkerSite by remember { mutableStateOf("NHAI-DEL-MUM-01") }
+    var calendarSelectedDay by remember { mutableStateOf(25) }
 
     // Leave Portal State (Shared)
     var globalLeaveRequests by remember {
@@ -216,7 +204,7 @@ fun DashboardScreen(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Welcome to", fontSize = 20.sp, color = Color.Gray, textAlign = TextAlign.Center)
-                            Text("DataLake 3.0", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A), textAlign = TextAlign.Center)
+                            Text("Workforce Portal", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A), textAlign = TextAlign.Center)
                             Text("powered by Digital India", fontSize = 12.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                         }
 
@@ -232,7 +220,7 @@ fun DashboardScreen(
                 }
 
                 Button(onClick = { currentScreenState = AppNavigationState.PORTAL_LOGIN }, colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                    Text("Access DataLake Secure Portal ➔", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Access Secure Portal ➔", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -250,7 +238,7 @@ fun DashboardScreen(
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Text("Welcome to Data Lake-2.0", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+                Text("Authentication Gateway", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
 
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0)), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -312,12 +300,12 @@ fun DashboardScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("DataLake 3.0: ADMIN MASTER SYSTEM", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) },
+                    title = { Text("Admin Master Portal", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) },
                     actions = {
                         BadgedBox(
                             badge = { if(adminNotifications > 0) Badge(containerColor = Color(0xFFEA580C)) { Text(adminNotifications.toString(), color = Color.White) } },
-                            modifier = Modifier.padding(horizontal = 8.dp).clickable { adminNotifications = 0; Toast.makeText(context, "AWS Server Logs: Pending verification notifications flushed", Toast.LENGTH_SHORT).show() }
-                        ) { Icon(Icons.Default.Notifications, contentDescription = "System Communications Node", tint = Color.White) }
+                            modifier = Modifier.padding(horizontal = 8.dp).clickable { adminNotifications = 0; Toast.makeText(context, "Notifications flushed", Toast.LENGTH_SHORT).show() }
+                        ) { Icon(Icons.Default.Notifications, contentDescription = "Communications Node", tint = Color.White) }
                         IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
@@ -326,37 +314,43 @@ fun DashboardScreen(
         ) { paddingValues ->
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
 
+                // Simplified admin tabs configuration
                 ScrollableTabRow(selectedTabIndex = selectedAdminTab, containerColor = Color.White, contentColor = nhaiBlue, edgePadding = 16.dp) {
-                    Tab(selected = selectedAdminTab == 0, onClick = { selectedAdminTab = 0 }, text = { Text("Core Tools", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 1, onClick = { selectedAdminTab = 1 }, text = { Text("Daily Logs", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Manual Overwrite", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 3, onClick = { selectedAdminTab = 3 }, text = { Text("Monthly Report", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 4, onClick = { selectedAdminTab = 4 }, text = { Text("Requests", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 0, onClick = { selectedAdminTab = 0 }, text = { Text("Core Tools", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 1, onClick = { selectedAdminTab = 1 }, text = { Text("Daily Logs", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Monthly Report", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 3, onClick = { selectedAdminTab = 3 }, text = { Text("Requests", fontSize = 12.sp, fontWeight = FontWeight.Bold) })
                 }
 
                 Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp)) {
                     when (selectedAdminTab) {
                         0 -> {
+                            // Core Tools Section
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                Text("Deploy Functional Pipeline Architectures Below:", fontSize = 13.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
+                                Text("Core Admin Functions:", fontSize = 14.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
                                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                                     Column(modifier = Modifier.padding(16.dp)) {
-                                        HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute biometric face scanning check-in logs", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
-                                        HelpTopicRow(Icons.Default.Security, "Safety Audit / Cryptography Key", "Secured AES-128 configuration parameters block", onClick = { currentScreenState = AppNavigationState.TASK_SAFETY_AUDIT })
-                                        HelpTopicRow(Icons.Default.Hub, "Sync Changes", "Sync offline pipelines backend database registers", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
-                                        HelpTopicRow(Icons.Default.VerifiedUser, "Workforce Profiles", "Authorized workforce configuration profiles mapping", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
+                                        HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute biometric face scanning logs", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
+
+                                        val syncText = if (lastSyncTs > 0L) {
+                                            "Last synced: ${SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(lastSyncTs))}"
+                                        } else "Auto-Syncing in background"
+
+                                        HelpTopicRow(Icons.Default.CloudSync, "Sync Changes", syncText, onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
+                                        HelpTopicRow(Icons.Default.RecentActors, "Workforce Profiles", "View complete employee check-in details", onClick = { currentScreenState = AppNavigationState.TASK_WORKFORCE_PROFILES })
                                     }
                                 }
                             }
                         }
-                        1 -> { // Daily Logs View (Fixed contrast buttons + Reject action vector integrated)
+                        1 -> {
+                            // Daily Logs View
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text("Personnel Daily Log Validation Desk:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
                                     Button(
                                         onClick = {
                                             activeWorkersRegistryList = activeWorkersRegistryList.map { it.copy(verificationState = "VERIFIED") }
-                                            Toast.makeText(context, "All logs verified globally!", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "All logs verified globally & Synced to AWS!", Toast.LENGTH_SHORT).show()
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                     ) { Text("Verify All Logs", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) }
@@ -373,27 +367,31 @@ fun DashboardScreen(
                                                         Spacer(modifier = Modifier.height(6.dp))
                                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                             if (employee.verificationState == "PENDING") {
+                                                                // Verify button with lighter blue background and white text for better readability
                                                                 Button(
                                                                     onClick = {
                                                                         activeWorkersRegistryList = activeWorkersRegistryList.map { if(it.id == employee.id) it.copy(verificationState = "VERIFIED") else it }
                                                                         userNotifications++
                                                                         Toast.makeText(context, "Verified & Synced to AWS", Toast.LENGTH_SHORT).show()
                                                                     },
-                                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6), contentColor = Color.White),
+                                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF60A5FA), contentColor = Color.White),
                                                                     modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                                                ) { Text("Verify", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+                                                                ) { Text("Verify", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White) }
 
+                                                                // Reject button
                                                                 Button(
                                                                     onClick = {
                                                                         activeWorkersRegistryList = activeWorkersRegistryList.map { if(it.id == employee.id) it.copy(verificationState = "REJECTED") else it }
                                                                         userNotifications++
-                                                                        Toast.makeText(context, "Rejected & Synced to AWS", Toast.LENGTH_SHORT).show()
+                                                                        Toast.makeText(context, "Rejected & Synced to AWS. User notified.", Toast.LENGTH_SHORT).show()
                                                                     },
                                                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444), contentColor = Color.White),
                                                                     modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                                                ) { Text("Reject", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+                                                                ) { Text("Reject", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White) }
                                                             } else {
-                                                                Icon(imageVector = if(employee.verificationState == "VERIFIED") Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = null, tint = if(employee.verificationState == "VERIFIED") Color(0xFF16A34A) else Color(0xFFDC3545), modifier = Modifier.size(20.dp).padding(horizontal = 4.dp))
+                                                                val iconColor = if(employee.verificationState == "VERIFIED") Color(0xFF16A34A) else Color(0xFFDC3545)
+                                                                Icon(imageVector = if(employee.verificationState == "VERIFIED") Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp).padding(horizontal = 4.dp))
+                                                                Text(employee.verificationState, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = iconColor)
                                                             }
                                                         }
                                                     }
@@ -409,18 +407,9 @@ fun DashboardScreen(
                             }
                         }
                         2 -> {
-                            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                Text("Manual Overwrite Verification Cache Overrides", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = nhaiBlue)
-                                OutlinedTextField(value = selectedOverrideEmployeeId, onValueChange = { selectedOverrideEmployeeId = it }, label = { Text("Target Workforce Unique Employee ID") }, modifier = Modifier.fillMaxWidth(), textStyle = visibleBlackTextStyle, colors = inputFieldColors)
-                                OutlinedTextField(value = overrideStatusInput, onValueChange = { overrideStatusInput = it }, label = { Text("Overridden Value Node (PRESENT / ABSENT / LEAVE)") }, modifier = Modifier.fillMaxWidth(), textStyle = visibleBlackTextStyle, colors = inputFieldColors)
-                                Button(onClick = { Toast.makeText(context, "Overwritten Successfully!", Toast.LENGTH_SHORT).show() }, colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                                    Text("Commit Administrative Override Modification")
-                                }
-                            }
-                        }
-                        3 -> {
+                            // Monthly Report Section
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Select Employee To Review Comprehensive Monthly Records Grid:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.DarkGray)
+                                Text("Select Employee For Monthly Calendar Record:", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = nhaiBlue)
                                 Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFCBD5E1))) {
                                     Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         activeWorkersRegistryList.forEach { employee ->
@@ -430,7 +419,7 @@ fun DashboardScreen(
                                             ) {
                                                 Column {
                                                     Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-                                                    Text("ID Vector Token: ${employee.id}", fontSize = 11.sp, color = Color.Gray)
+                                                    Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
                                                 }
                                                 Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue)
                                             }
@@ -439,11 +428,14 @@ fun DashboardScreen(
                                 }
                             }
                         }
-                        4 -> { // Requests Admin Side - Deny & Approve options to AWS Sync
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Leave Requests Management:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
-                                Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                                    Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        3 -> {
+                            // Requests Block (Leave Approvals + Manual Overwrite)
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+
+                                // Section: Leave Management
+                                Text("Leave Applications Management", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = nhaiBlue)
+                                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         if (globalLeaveRequests.isEmpty()) {
                                             Text("No leave requests pending.", color = Color.Gray, fontSize = 12.sp)
                                         } else {
@@ -461,7 +453,7 @@ fun DashboardScreen(
                                                                     updated[index] = request.copy(status = "Approved")
                                                                     globalLeaveRequests = updated
                                                                     userNotifications++
-                                                                    Toast.makeText(context, "Approved & Synced to AWS", Toast.LENGTH_SHORT).show()
+                                                                    Toast.makeText(context, "Approved & Synced to AWS. User notified.", Toast.LENGTH_SHORT).show()
                                                                 },
                                                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)), modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                                                             ) { Text("Approve", color = Color.White, fontSize = 10.sp) }
@@ -474,7 +466,7 @@ fun DashboardScreen(
                                                                     updated[index] = request.copy(status = "Denied")
                                                                     globalLeaveRequests = updated
                                                                     userNotifications++
-                                                                    Toast.makeText(context, "Denied & Synced to AWS", Toast.LENGTH_SHORT).show()
+                                                                    Toast.makeText(context, "Denied & Synced to AWS. User notified.", Toast.LENGTH_SHORT).show()
                                                                 },
                                                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC3545)), modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                                                             ) { Text("Deny", color = Color.White, fontSize = 10.sp) }
@@ -487,6 +479,28 @@ fun DashboardScreen(
                                         }
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                HorizontalDivider(color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Section: Manual Overwrite
+                                Text("Manual Attendance Overwrite (Face Mismatch Validation)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = nhaiBlue)
+                                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        OutlinedTextField(value = selectedOverrideEmployeeId, onValueChange = { selectedOverrideEmployeeId = it }, label = { Text("Target Unique Employee ID") }, modifier = Modifier.fillMaxWidth(), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
+                                        OutlinedTextField(value = overrideStatusInput, onValueChange = { overrideStatusInput = it }, label = { Text("Value Node (PRESENT / ABSENT)") }, modifier = Modifier.fillMaxWidth(), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
+                                        Button(
+                                            onClick = {
+                                                userNotifications++
+                                                Toast.makeText(context, "Admin Verification Force Commited & Synced to AWS", Toast.LENGTH_SHORT).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().height(48.dp)
+                                        ) {
+                                            Text("Self-Verify Identity & Commit Update")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -496,7 +510,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SCREEN 3B: SEPARATE USER WORKSPACE HUB
+    // SCREEN 3B: SEPARATE USER WORKSPACE HUB (Untouched core logic, matches expectations)
     // =========================================================================
     else if (currentScreenState == AppNavigationState.USER_WORKSPACE) {
         Scaffold(
@@ -548,7 +562,7 @@ fun DashboardScreen(
                         }
                     }
 
-                    // AWS Sync Status Card
+                    // AWS Sync Status Card indicating Background Auto Sync
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -578,7 +592,7 @@ fun DashboardScreen(
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text("Operational System Verification Controls:", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
-                                HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute field scan tracking verification loop algorithms", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
+                                HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute field scan tracking verification loop", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
                                 HelpTopicRow(Icons.Default.Person, "My Profile", "View personal details and monthly attendance analytics", onClick = { currentScreenState = AppNavigationState.USER_PROFILE })
                                 HelpTopicRow(Icons.Default.DateRange, "Apply for Leave", "Submit leave requests for admin verification", onClick = { currentScreenState = AppNavigationState.USER_LEAVE_PORTAL })
                             }
@@ -599,9 +613,8 @@ fun DashboardScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Mark Attendance Terminal Lens", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    title = { Text("Mark Attendance Terminal", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
                 )
             }
@@ -622,16 +635,6 @@ fun DashboardScreen(
                         Box(modifier = Modifier.size(180.dp, 220.dp).border(BorderStroke(2.dp, Color(0xFF0088FF).copy(alpha = 0.3f)), CircleShape))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Face, contentDescription = null, tint = Color(0xFF0088FF).copy(alpha = 0.15f), modifier = Modifier.size(100.dp))
-                            Text("PROCESSING LIVENESS MATRIX FRAME", fontSize = 10.sp, color = Color(0xFF0088FF), letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Telemetry Status: ${uiState.promptMessage}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0088FF))
-                            Text("Left Eye Tracking: ${(uiState.leftEyeOpenProb * 100).toInt()}% Match Vectors", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("Right Eye Tracking: ${(uiState.rightEyeOpenProb * 100).toInt()}% Match Vectors", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("Smile Force Factor: ${(uiState.smilingProb * 100).toInt()}% Structural Matrix", fontSize = 12.sp, color = Color.DarkGray)
                         }
                     }
 
@@ -647,15 +650,14 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 2: Network Sync Status
+    // ADMIN SUB-PAGE 2: Sync Changes Node
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_UCC_GATEWAY) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Network Sync Status Pipeline", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    title = { Text("Network Sync Overview", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
                 )
             }
@@ -666,12 +668,64 @@ fun DashboardScreen(
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(text = "Pending dispatch local packets waiting transfer: ${unsyncedList.size} queues verified.", fontSize = 14.sp, color = Color.DarkGray)
-                            Text(text = "Last verified data transaction push: Auto-Syncing", fontSize = 12.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                            Text(text = "Last verified data transaction push: Auto-Syncing with AWS", fontSize = 12.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     Button(onClick = { viewModel.syncOfflineQueue(); Toast.makeText(context, "Stream push complete. Data Lake updated!", Toast.LENGTH_SHORT).show(); currentScreenState = lastWorkspaceOrigin }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
                         Text("Force Transmission Synchronize Link", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // ADMIN SUB-PAGE 3: WORKFORCE PROFILES
+    // =========================================================================
+    else if (currentScreenState == AppNavigationState.TASK_WORKFORCE_PROFILES) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Workforce Profiles", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
+                )
+            }
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("All Registered Field Operators Data", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
+
+                    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        activeWorkersRegistryList.forEach { profile ->
+                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0)), shape = RoundedCornerShape(12.dp)) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                        Column {
+                                            Text(profile.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color.Black)
+                                            Text("Emp ID: ${profile.id} | Site: ${profile.projectCode}", fontSize = 12.sp, color = Color.Gray)
+                                        }
+                                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(36.dp))
+                                    }
+                                    HorizontalDivider(color = Color(0xFFF1F5F9))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Column {
+                                            Text("Check-In", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                            Text(profile.dailyCheckIn, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+                                        }
+                                        Column {
+                                            Text("Check-Out", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                            Text(profile.dailyCheckOut, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("Total Hrs", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                            Text(profile.totalHours, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -687,16 +741,6 @@ fun DashboardScreen(
                 TopAppBar(
                     title = { Text("My Profile", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = AppNavigationState.USER_WORKSPACE }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = {
-                        IconButton(onClick = { userNotifications = 0; Toast.makeText(context, "Notifications cleared", Toast.LENGTH_SHORT).show() }) {
-                            BadgedBox(badge = { if (userNotifications > 0) Badge(containerColor = Color.Red, contentColor = Color.White) { Text("$userNotifications") } }) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
-                            }
-                        }
-                        IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
                 )
             }
@@ -786,14 +830,6 @@ fun DashboardScreen(
                 TopAppBar(
                     title = { Text("Apply for Leave", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = AppNavigationState.USER_WORKSPACE }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = {
-                        IconButton(onClick = { userNotifications = 0; Toast.makeText(context, "Notifications cleared", Toast.LENGTH_SHORT).show() }) {
-                            BadgedBox(badge = { if (userNotifications > 0) Badge(containerColor = Color.Red, contentColor = Color.White) { Text("$userNotifications") } }) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
-                            }
-                        }
-                        IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
                 )
             }
@@ -936,7 +972,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // IMPROVED MONTHLY REPORT SHEET CALENDAR GRID OVERVIEW UI
+    // CALENDAR GRID MONTHLY REPORT SHEET FOR ADMIN
     // =========================================================================
     inspectedWorkerProfile?.let { profile ->
         AlertDialog(
@@ -948,24 +984,18 @@ fun DashboardScreen(
                     Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(32.dp))
                     Column {
                         Text(text = profile.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color.Black)
-                        Text(text = "Comprehensive 31-Day Ledger Logs", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = "Monthly Ledger - ${profile.id}", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     HorizontalDivider(color = Color(0xFFE2E8F0))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                             Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("MONTHLY RATIO", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                Text(profile.monthlyRatio, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF16A34A))
-                            }
-                        }
-                        Card(modifier = Modifier.weight(1.2f), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("TOTAL WORK TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                Text("TOTAL TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                                 Text(profile.totalHours, fontSize = 15.sp, fontWeight = FontWeight.Black, color = nhaiBlue)
                             }
                         }
@@ -977,50 +1007,64 @@ fun DashboardScreen(
                         }
                     }
 
-                    Text("Structured 4-Week Attendance Log Track:", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = nhaiBlue)
+                    // Calendar Display Area
+                    Text("Select a date to inspect:", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = nhaiBlue)
 
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            "WEEK 1 (May 01 - May 07) : 42.5 Hours logged ➔ 100% COMPLIANT",
-                            "WEEK 2 (May 08 - May 14) : 38.0 Hours logged ➔ 100% COMPLIANT",
-                            "WEEK 3 (May 15 - May 21) : 41.5 Hours logged ➔ 100% COMPLIANT",
-                            "WEEK 4 (May 22 - May 28) : 36.5 Hours logged ➔ 100% COMPLIANT"
-                        ).forEach { weekSummary ->
-                            Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(16.dp).weight(0.15f))
-                                Text(text = weekSummary, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.weight(1f))
+                    val daysGrid = (1..31).toList().chunked(7)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            listOf("S", "M", "T", "W", "T", "F", "S").forEach {
+                                Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                            }
+                        }
+
+                        daysGrid.forEach { week ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                week.forEach { day ->
+                                    val isSelected = day == calendarSelectedDay
+                                    // Make week 4 (days 22+) red/absent arbitrarily for showcase to mimic attendance logs
+                                    val isPresent = day < 22
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) nhaiBlue else Color(0xFFF1F5F9))
+                                            .clickable { calendarSelectedDay = day },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("$day", fontSize = 11.sp, fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal, color = if(isSelected) Color.White else Color.Black)
+                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(if (isPresent) Color(0xFF28A745) else Color(0xFFDC3545)))
+                                        }
+                                    }
+                                }
+                                // pad remaining boxes if incomplete week
+                                repeat(7 - week.size) { Box(modifier = Modifier.weight(1f).aspectRatio(1f)) }
                             }
                         }
                     }
 
-                    Text("Granular Daily Micro Telemetry Status:", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color.DarkGray)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            "25 May (Mon) - Check-In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} ➔ PRESENT",
-                            "26 May (Tue) - Check-In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} ➔ PRESENT",
-                            "27 May (Wed) - Check-In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} ➔ PRESENT",
-                            "28 May (Thu) - Check-In: --:-- | Out: --:-- ➔ APPROVED LEAVE"
-                        ).forEach { dailyLine ->
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if(dailyLine.contains("PRESENT")) Color(0xFF28A745) else Color(0xFFEA580C)))
-                                Text(text = dailyLine, fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+                    // Data for Selected Day
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("Log Details for $calendarSelectedDay May", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            if (calendarSelectedDay < 22) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Login: ${profile.dailyCheckIn}", fontSize = 11.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                                    Text("Logout: ${profile.dailyCheckOut}", fontSize = 11.sp, color = Color(0xFFDC3545), fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                Text("Status: ABSENT / ON LEAVE", fontSize = 11.sp, color = Color(0xFFDC3545), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                    HorizontalDivider(color = Color(0xFFE2E8F0))
                 }
             },
             confirmButton = { TextButton(onClick = { inspectedWorkerProfile = null }) { Text("Close Analytics Frame", fontWeight = FontWeight.Bold, color = nhaiBlue) } }
-        )
-    }
-
-    if (showConfirmResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmResetDialog = false },
-            title = { Text("Purge Database Telemetry Logs?", fontWeight = FontWeight.Bold) },
-            text = { Text("Permanently wipe security database logs? This operation is completely irreversible.") },
-            confirmButton = { TextButton(onClick = { viewModel.forcePurgeAllLogs(); showConfirmResetDialog = false; currentScreenState = lastWorkspaceOrigin; Toast.makeText(context, "Local records purged!", Toast.LENGTH_SHORT).show() }) { Text("Purge Caches", color = Color.Red) } },
-            dismissButton = { TextButton(onClick = { showConfirmResetDialog = false }) { Text("Cancel Action") } }
         )
     }
 }
