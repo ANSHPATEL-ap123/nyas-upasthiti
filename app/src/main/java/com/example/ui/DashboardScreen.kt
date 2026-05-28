@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.data.model.TransactionLog
 
-// Local Error-Free Structural Model for Workforce Registration Profiles
+// Local Structural Model for Workforce Registration Profiles
 data class LocalWorkerProfile(
     val id: String,
     val name: String,
@@ -45,8 +45,18 @@ data class LocalWorkerProfile(
     val dailyCheckOut: String = "06:15 PM",
     val monthlyRatio: String = "96.4%",
     val totalHours: String = "176.5 Hrs",
-    val biometricStatus: String = "Active Vector Loaded",
-    val accessibilityMode: String = "Standard Mode (0)"
+    val avgDailyHours: String = "8h 15m",
+    val verificationState: String = "PENDING",
+    val biometricStatus: String = "Active Vector Loaded"
+)
+
+// Structural Model for Administrative Request Tickets
+data class SystemRequestTicket(
+    val ticketId: String,
+    val workerName: String,
+    val type: String, // "LEAVE REQUEST" or "MANUAL OVERWRITE" or "FACIAL MISMATCH BYPASS"
+    val metadata: String,
+    var ticketStatus: String = "PENDING"
 )
 
 // Comprehensive State Router Navigation Enum
@@ -56,9 +66,6 @@ enum class AppNavigationState {
     ADMIN_WORKSPACE,
     USER_WORKSPACE,
     TASK_ATTENDANCE_ENGINE,
-    TASK_RFI_LEDGER,
-    TASK_SAFETY_AUDIT,
-    TASK_MAINTENANCE_SANDBOX,
     TASK_UCC_GATEWAY,
     TASK_BIOMETRIC_REGISTRATION
 }
@@ -79,14 +86,13 @@ fun DashboardScreen(
     var currentScreenState by remember { mutableStateOf(AppNavigationState.WELCOME_SPLASH) }
     var lastWorkspaceOrigin by remember { mutableStateOf(AppNavigationState.USER_WORKSPACE) }
 
-    // Persistent Login Form Fields States
+    // Persistent Login Form Fields States (High-Contrast Text Mode Enabled)
     var usernameInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf("ADMIN") }
     var captchaInput by remember { mutableStateOf("") }
     var isRoleExpanded by remember { mutableStateOf(false) }
 
-    // CAPTCHA Refresh State parameters
     val captchaList = remember { listOf("pBmcSL", "xK7wN2", "mR9vP4", "qZ3fT8", "vY5bX1") }
     var captchaIndex by remember { mutableStateOf(0) }
     val currentCaptchaString = captchaList[captchaIndex]
@@ -94,20 +100,29 @@ fun DashboardScreen(
     var selectedDetailLog by remember { mutableStateOf<TransactionLog?>(null) }
     var showConfirmResetDialog by remember { mutableStateOf(false) }
 
-    // Admin Tabs Parameters
+    // Admin Tabs Parameters (0 = Core Tools, 1 = Daily Logs, 2 = Requests Center, 3 = Monthly Analytics)
     var selectedAdminTab by remember { mutableStateOf(0) }
-    var selectedOverrideEmployeeId by remember { mutableStateOf("") }
-    var overrideStatusInput by remember { mutableStateOf("PRESENT") }
 
     // Workforce Database Cache Pool Layout Nodes
     var activeWorkersRegistryList by remember {
         mutableStateOf(
             listOf(
-                LocalWorkerProfile("EMP101", "Amit Kumar", "NHAI-DEL-MUM-01", "08:58 AM", "06:05 PM", "97.2%", "180.5 Hrs"),
-                LocalWorkerProfile("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", "09:02 AM", "06:12 PM", "95.8%", "172.0 Hrs"),
-                LocalWorkerProfile("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", "08:45 AM", "05:55 PM", "98.1%", "184.0 Hrs"),
-                LocalWorkerProfile("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", "09:15 AM", "06:30 PM", "94.5%", "168.5 Hrs"),
-                LocalWorkerProfile("EMP105", "Vikram Singh", "NHAI-EAST-EXPRESS", "08:55 AM", "06:00 PM", "96.7%", "178.0 Hrs")
+                LocalWorkerProfile("EMP101", "Amit Kumar", "NHAI-DEL-MUM-01", "08:58 AM", "06:05 PM", "97.2%", "180.5 Hrs", "8h 22m", "PENDING"),
+                LocalWorkerProfile("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", "09:02 AM", "06:12 PM", "95.8%", "172.0 Hrs", "7h 58m", "PENDING"),
+                LocalWorkerProfile("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", "08:45 AM", "05:55 PM", "98.1%", "184.0 Hrs", "8h 35m", "VERIFIED"),
+                LocalWorkerProfile("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", "09:15 AM", "06:30 PM", "94.5%", "168.5 Hrs", "7h 45m", "PENDING"),
+                LocalWorkerProfile("EMP105", "Vikram Singh", "NHAI-EAST-EXPRESS", "08:55 AM", "06:00 PM", "96.7%", "178.0 Hrs", "8h 10m", "PENDING")
+            )
+        )
+    }
+
+    // Unified Administrative Operational Request Tickets Registry Pool
+    var administrativeRequestsPool by remember {
+        mutableStateOf(
+            listOf(
+                SystemRequestTicket("REQ-402", "Amit Kumar", "LEAVE REQUEST", "Medical Leave - Duration: 3 Days"),
+                SystemRequestTicket("REQ-403", "Priya Sharma", "MANUAL OVERWRITE", "Log check-in entry request for missing system timestamp"),
+                SystemRequestTicket("REQ-404", "Sunita Rao", "FACIAL MISMATCH BYPASS", "Biometric verification failed (Glare: Match 0.54) - Require Admin Self-Verify Override")
             )
         )
     }
@@ -217,19 +232,6 @@ fun DashboardScreen(
                                         currX += 55f
                                     }
                                 }
-                            }
-                            Box(
-                                modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0xAA000000)))),
-                                contentAlignment = Alignment.BottomCenter
-                            ) {
-                                Text(
-                                    text = "Delhi-Mumbai Greenfield Expressway Infrastructure Corridor",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(bottom = 12.dp),
-                                    textAlign = TextAlign.Center
-                                )
                             }
                         }
                     }
@@ -425,7 +427,7 @@ fun DashboardScreen(
                 ScrollableTabRow(selectedTabIndex = selectedAdminTab, containerColor = Color.White, contentColor = nhaiBlue, edgePadding = 16.dp) {
                     Tab(selected = selectedAdminTab == 0, onClick = { selectedAdminTab = 0 }, text = { Text("Core Tools", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
                     Tab(selected = selectedAdminTab == 1, onClick = { selectedAdminTab = 1 }, text = { Text("Daily Logs", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
-                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Manual Overwrite", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
+                    Tab(selected = selectedAdminTab == 2, onClick = { selectedAdminTab = 2 }, text = { Text("Requests Center", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
                     Tab(selected = selectedAdminTab == 3, onClick = { selectedAdminTab = 3 }, text = { Text("Monthly Report", fontSize = 11.sp, fontWeight = FontWeight.Bold) })
                 }
 
@@ -437,29 +439,59 @@ fun DashboardScreen(
                                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                                     Column(modifier = Modifier.padding(16.dp)) {
                                         HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute biometric face scanning check-in logs", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
-                                        HelpTopicRow(Icons.Default.NetworkCheck, "RFI Geolocation Ledger", "Logs Storage telemetry transaction tables database", onClick = { currentScreenState = AppNavigationState.TASK_RFI_LEDGER })
-                                        HelpTopicRow(Icons.Default.Security, "Safety Audit / Cryptography Key", "Secured AES-128 configuration parameters block", onClick = { currentScreenState = AppNavigationState.TASK_SAFETY_AUDIT })
-                                        HelpTopicRow(Icons.Default.Build, "Maintenance Engine Sandbox", "Bypass physical hardware metrics directly", onClick = { currentScreenState = AppNavigationState.TASK_MAINTENANCE_SANDBOX })
-                                        HelpTopicRow(Icons.Default.Hub, "UCC / NHAI Data Lake 3.0", "Sync offline pipelines backend database registers", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
-                                        HelpTopicRow(Icons.Default.VerifiedUser, "Login & Biometric Registration", "Authorized workforce configuration profiles mapping", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
+                                        HelpTopicRow(Icons.Default.Hub, "Network Sync Status", "Last server synchronization executed: 28-05-2026 15:45", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
+                                        HelpTopicRow(Icons.Default.VerifiedUser, "Workforce Profiles", "Authorized workforce configuration profiles mapping", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
                                     }
                                 }
                             }
                         }
                         1 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Personnel Daily Shift Log Index (Admin Overview Mode):", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Personnel Daily Log Validation Desk:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
+                                    // FIXED LINE 465: Replaced broken '.bind()' suffix with proper '.dp' syntax compilation metric
+                                    Button(
+                                        onClick = {
+                                            activeWorkersRegistryList = activeWorkersRegistryList.map { it.copy(verificationState = "VERIFIED") }
+                                            Toast.makeText(context, "All parameters successfully verified globally!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("Verify All Logs", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+
                                 Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                                     Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         activeWorkersRegistryList.forEach { employee ->
                                             Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp)).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                                Column {
-                                                    Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
-                                                    Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(text = employee.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
+                                                    Text("Check-In: ${employee.dailyCheckIn} | Status: ${employee.verificationState}", fontSize = 11.sp, color = if(employee.verificationState == "VERIFIED") Color(0xFF16A34A) else Color.Gray, fontWeight = FontWeight.Bold)
                                                 }
-                                                Column(horizontalAlignment = Alignment.End) {
-                                                    Text("In: ${employee.dailyCheckIn}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
-                                                    Text("Out: ${employee.dailyCheckOut}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+
+                                                if (employee.verificationState != "VERIFIED") {
+                                                    Button(
+                                                        onClick = {
+                                                            activeWorkersRegistryList = activeWorkersRegistryList.map {
+                                                                if(it.id == employee.id) it.copy(verificationState = "VERIFIED") else it
+                                                            }
+                                                            Toast.makeText(context, "${employee.name} verified cleanly", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue),
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text("Verify", fontSize = 10.sp)
+                                                    }
+                                                } else {
+                                                    Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(20.dp).padding(horizontal = 4.dp))
                                                 }
                                             }
                                         }
@@ -468,58 +500,69 @@ fun DashboardScreen(
                             }
                         }
                         2 -> {
-                            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                Text("Manual Overwrite Verification Cache Overrides", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = nhaiBlue)
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Central Operational Requests Core Desk:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
 
-                                OutlinedTextField(
-                                    value = selectedOverrideEmployeeId,
-                                    onValueChange = { selectedOverrideEmployeeId = it },
-                                    label = { Text("Target Workforce Unique Employee ID") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textStyle = visibleBlackTextStyle,
-                                    colors = inputFieldColors
-                                )
+                                Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    administrativeRequestsPool.forEach { ticket ->
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                                            border = BorderStroke(1.dp, if(ticket.ticketStatus == "APPROVED") Color(0xFF16A34A) else Color(0xFFCBD5E1))
+                                        ) {
+                                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFF0F172A)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                                        Text(ticket.type, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                    Text(ticket.ticketStatus, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if(ticket.ticketStatus == "APPROVED") Color(0xFF16A34A) else Color(0xFFEA580C))
+                                                }
 
-                                OutlinedTextField(
-                                    value = overrideStatusInput,
-                                    onValueChange = { overrideStatusInput = it },
-                                    label = { Text("Overridden Value Node (PRESENT / ABSENT / LEAVE)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textStyle = visibleBlackTextStyle,
-                                    colors = inputFieldColors
-                                )
+                                                Text(text = "Origin Node: ${ticket.workerName} (${ticket.ticketId})", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
+                                                Text(text = ticket.metadata, fontSize = 12.sp, color = Color.DarkGray)
 
-                                Button(
-                                    onClick = {
-                                        if (selectedOverrideEmployeeId.isNotEmpty()) {
-                                            Toast.makeText(context, "Registry Node Record Overwritten Successfully!", Toast.LENGTH_SHORT).show()
-                                            selectedOverrideEmployeeId = ""
-                                        } else {
-                                            Toast.makeText(context, "Please supply a valid validation token mapping", Toast.LENGTH_SHORT).show()
+                                                if (ticket.ticketStatus == "PENDING") {
+                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                                                        TextButton(
+                                                            onClick = {
+                                                                ticket.ticketStatus = "APPROVED"
+                                                                Toast.makeText(context, "Administrative Approval Granted Natively", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = if(ticket.type == "FACIAL MISMATCH BYPASS") "Execute Admin Self-Verify" else "Grant Approval",
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = Color(0xFF16A34A)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                                ) {
-                                    Text("Commit Administrative Override Modification")
+                                    }
                                 }
                             }
                         }
                         3 -> {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Workforce Cumulative Monthly Attendance Analytics Report:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
+                                Text("Select Employee To Review Comprehensive Monthly Records Grid:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.DarkGray)
                                 Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFCBD5E1))) {
                                     Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         activeWorkersRegistryList.forEach { employee ->
-                                            Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                                                    .clickable { inspectedWorkerProfile = employee }
+                                                    .padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
                                                 Column {
                                                     Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-                                                    Text("Total Cumulative Time: ${employee.totalHours}", fontSize = 11.sp, color = Color.DarkGray)
+                                                    Text("ID Vector Token: ${employee.id}", fontSize = 11.sp, color = Color.Gray)
                                                 }
-                                                Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF28A745)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                                                    Text("Ratio: ${employee.monthlyRatio}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-                                                }
+                                                Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue)
                                             }
                                         }
                                     }
@@ -589,8 +632,8 @@ fun DashboardScreen(
                             Text("Operational System Verification Controls:", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
                                 HelpTopicRow(Icons.Default.CheckCircle, "Mark Attendance", "Execute field scan tracking verification loop algorithms", onClick = { currentScreenState = AppNavigationState.TASK_ATTENDANCE_ENGINE })
-                                HelpTopicRow(Icons.Default.Hub, "UCC / NHAI Data Lake 3.0", "Sync local queue packets to central cloud", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
-                                HelpTopicRow(Icons.Default.VerifiedUser, "Login & Biometric Registration", "Inspect loaded offline credentials index arrays", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
+                                HelpTopicRow(Icons.Default.Hub, "Network Sync Status", "Sync local queues directly to central cluster registers", onClick = { currentScreenState = AppNavigationState.TASK_UCC_GATEWAY })
+                                HelpTopicRow(Icons.Default.VerifiedUser, "Workforce Profiles", "Inspect loaded offline credentials validation matrix index", onClick = { currentScreenState = AppNavigationState.TASK_BIOMETRIC_REGISTRATION })
                             }
                         }
                     }
@@ -600,7 +643,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 1: LIVE ADVANCED BIOMETRIC VERIFICATION
+    // SUB-PAGE 1: LIVE ADVANCED BIOMETRIC VERIFICATION (Mark Attendance)
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_ATTENDANCE_ENGINE) {
         val infiniteTransition = rememberInfiniteTransition()
@@ -657,111 +700,13 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 2: SECURE RFI SQLITE LEDGER DATABASE VIEW
-    // =========================================================================
-    else if (currentScreenState == AppNavigationState.TASK_RFI_LEDGER) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Secure SQLite Log Records", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
-                    navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
-                )
-            }
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
-                Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Encrypted Local SQLite Telemetry Transactions Table:", fontSize = 13.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
-
-                    if (transactionLogsList.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                            Text("No cryptographic verification payloads committed to offline log space yet.", color = Color.Gray, fontSize = 13.sp)
-                        }
-                    } else {
-                        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            transactionLogsList.forEach { log ->
-                                Card(modifier = Modifier.fillMaxWidth().clickable { selectedDetailLog = log }, colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                                    Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                        Column {
-                                            Text(log.employeeName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                            Text("Timestamp: Asset Node Secure Log Packet", fontSize = 11.sp, color = Color.Gray)
-                                        }
-                                        Text("Inspect Vector ➔", fontSize = 12.sp, color = Color(0xFF0088FF))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // =========================================================================
-    // SUB-PAGE 3: SAFETY AUDIT AES CRYPTOGRAPHY PANEL
-    // =========================================================================
-    else if (currentScreenState == AppNavigationState.TASK_SAFETY_AUDIT) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("AES Cryptography Center", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
-                    navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
-                )
-            }
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
-                Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Data Integrity Configuration", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                        Text(text = "All local entries committed to terminal sector caches utilize symmetric AES block-ciphers combined with unique initialization vectors to protect workforce identity data sovereignty laws under infrastructure telemetry constraints.", fontSize = 14.sp, color = Color.DarkGray, modifier = Modifier.padding(16.dp))
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Button(onClick = { showConfirmResetDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                        Text("Purge Offline Terminal Cache Local Registers", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-
-    // =========================================================================
-    // SUB-PAGE 4: LIVENESS CHALLENGE HARDWARE SIMULATION
-    // =========================================================================
-    else if (currentScreenState == AppNavigationState.TASK_MAINTENANCE_SANDBOX) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Liveness Bypass Mock Center", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
-                    navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
-                    actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
-                )
-            }
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
-                Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Manual Override Filters Sandbox Panels", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
-                    Text("Bypass physical optics metrics directly to test systemic response thresholds for 4-phase behavioral classification rules:", fontSize = 13.sp, color = Color.DarkGray)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = { viewModel.simulateManualBlink(); Toast.makeText(context, "Blink Parameter Injection Pushed!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)), shape = RoundedCornerShape(10.dp)) { Text("Mock Blink Event", fontSize = 12.sp) }
-                        Button(onClick = { viewModel.simulateManualSmile(); Toast.makeText(context, "Smile Parameter Injection Pushed!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)), shape = RoundedCornerShape(10.dp)) { Text("Mock Smile Event", fontSize = 12.sp) }
-                    }
-                }
-            }
-        }
-    }
-
-    // =========================================================================
-    // SUB-PAGE 5: UCC / NHAI CLOUD DATA GATEWAY SYNC
+    // SUB-PAGE 2: Network Sync Status
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_UCC_GATEWAY) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("NHAI Cloud Gateway Pipeline", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    title = { Text("Network Sync Status Pipeline", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
                     actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
@@ -772,7 +717,10 @@ fun DashboardScreen(
                 Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Enterprise System Pipeline Streams", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D3E73))
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                        Text(text = "Pending dispatch local packets waiting transfer: ${unsyncedList.size} queues verified.", fontSize = 14.sp, color = Color.DarkGray, modifier = Modifier.padding(16.dp))
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(text = "Pending dispatch local packets waiting transfer: ${unsyncedList.size} queues verified.", fontSize = 14.sp, color = Color.DarkGray)
+                            Text(text = "Last verified data transaction push: 28-05-2026 15:45", fontSize = 12.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                        }
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     Button(onClick = { viewModel.syncOfflineQueue(); Toast.makeText(context, "Stream push complete. Data Lake updated!", Toast.LENGTH_SHORT).show(); currentScreenState = lastWorkspaceOrigin }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
@@ -784,13 +732,13 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 6: AUTHORIZED WORKFORCE REGISTRATION
+    // SUB-PAGE 3: WORKFORCE PROFILES
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_BIOMETRIC_REGISTRATION) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Workforce Registration Profiles", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                    title = { Text("Workforce Profiles Management Ledger", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = { IconButton(onClick = { currentScreenState = lastWorkspaceOrigin }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White) } },
                     actions = { IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
@@ -802,7 +750,7 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Authorized Personnel Registry Profiles Load Nodes:", fontSize = 14.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
+                    Text("Authorized Personnel Registry Profiles:", fontSize = 14.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
 
                     if (lastWorkspaceOrigin == AppNavigationState.ADMIN_WORKSPACE) {
                         Card(
@@ -932,19 +880,19 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // PROFESSIONAL RECOGNITION PROFILE SHEET (CRUD Feature: INSPECT PROFILE)
+    // MONTHLY ANALYTICS GRID SCREEN VIEW (Launches Calendar Map On Click)
     // =========================================================================
     inspectedWorkerProfile?.let { profile ->
         AlertDialog(
             onDismissRequest = { inspectedWorkerProfile = null },
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             containerColor = Color.White,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(28.dp))
                     Column {
-                        Text(text = profile.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
-                        Text(text = "Status: Biometrically Active", fontSize = 11.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                        Text(text = "${profile.name} - Attendance Ledger", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.Black)
+                        Text(text = "Monthly Performance Matrix Overview", fontSize = 11.sp, color = Color.Gray)
                     }
                 }
             },
@@ -952,44 +900,49 @@ fun DashboardScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     HorizontalDivider(color = Color(0xFFE2E8F0))
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9)).padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
-                            Text("DAILY IN TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                            Text(profile.dailyCheckIn, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
+                            Text("MONTHLY RATIO", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(profile.monthlyRatio, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("TOTAL HOURS", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(profile.totalHours, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("DAILY OUT TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                            Text(profile.dailyCheckOut, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                            Text("AVG DAILY TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(profile.avgDailyHours, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                     }
 
-                    Column {
-                        Text("REGISTRATION CODE MATRIX INDEX", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                        Text(profile.id, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.Black)
-                    }
-                    Column {
-                        Text("ASSIGNED CORRIDOR / PROJECT SITE", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                        Text(profile.projectCode, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.Black)
-                    }
-                    Column {
-                        Text("OFFLINE EMBEDDING VECTOR STATUS", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                        Text(profile.biometricStatus, fontSize = 12.sp, color = Color(0xFF0088FF), fontWeight = FontWeight.SemiBold)
+                    Text("May 2026 Shift Matrix Summary Guide:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf(
+                            "25 May (Mon) - In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} -> PRESENT",
+                            "26 May (Tue) - In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} -> PRESENT",
+                            "27 May (Wed) - In: ${profile.dailyCheckIn} | Out: ${profile.dailyCheckOut} -> PRESENT",
+                            "28 May (Thu) - In: --:-- | Out: --:-- -> ABSENT / LEAVE"
+                        ).forEach { logLine ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if(logLine.contains("PRESENT")) Color(0xFF28A745) else Color(0xFFDC3545)))
+                                Text(text = logLine, fontSize = 11.sp, color = Color.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                     }
 
                     HorizontalDivider(color = Color(0xFFE2E8F0))
                 }
             },
             confirmButton = {
-                TextButton(onClick = { inspectedWorkerProfile = null }, colors = ButtonDefaults.textButtonColors(contentColor = nhaiBlue)) {
-                    Text("Dismiss Profile Sheet", fontWeight = FontWeight.Bold)
+                TextButton(onClick = { inspectedWorkerProfile = null }) {
+                    Text("Close Analytics Frame", fontWeight = FontWeight.Bold, color = nhaiBlue)
                 }
             }
         )
     }
 
-    // =========================================================================
-    // MODAL WINDOW DETAILED INSPECTORS
-    // =========================================================================
+    // Modal dialogue managers logic
     selectedDetailLog?.let { log ->
         AlertDialog(
             onDismissRequest = { selectedDetailLog = null },
