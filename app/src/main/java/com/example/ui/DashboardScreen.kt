@@ -65,15 +65,15 @@ data class LeaveRequest(
     val empName: String = "Ansh Patel"
 )
 
-// Comprehensive State Router Navigation Enum (Cleaned as per new requirements)
+// Comprehensive State Router Navigation Enum
 enum class AppNavigationState {
     WELCOME_SPLASH,
     PORTAL_LOGIN,
     ADMIN_WORKSPACE,
     USER_WORKSPACE,
     TASK_ATTENDANCE_ENGINE,
-    TASK_UCC_GATEWAY, // Repurposed for Sync Changes
-    TASK_WORKFORCE_PROFILES, // Repurposed for Workforce Profiles List
+    TASK_UCC_GATEWAY,
+    TASK_WORKFORCE_PROFILES,
     USER_PROFILE,
     USER_LEAVE_PORTAL
 }
@@ -85,9 +85,12 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val rawUiState by viewModel.uiState.collectAsState()
+
+    // THE FIX: Directly observing all flow states without locking/overriding them
+    val uiState by viewModel.uiState.collectAsState()
     val unsyncedList by viewModel.unsyncedLogs.collectAsState()
     val lastSyncTs by viewModel.lastSyncTimestamp.collectAsState()
+    val employeesList by viewModel.employees.collectAsState() // Forces DB to provide data for bypass
 
     // Central state navigation router
     var currentScreenState by remember { mutableStateOf(AppNavigationState.WELCOME_SPLASH) }
@@ -142,12 +145,6 @@ fun DashboardScreen(
     var isLeaveTypeExpanded by remember { mutableStateOf(false) }
     var selectedStartDay by remember { mutableStateOf(-1) }
     var selectedEndDay by remember { mutableStateOf(-1) }
-
-    val uiState = remember(rawUiState) {
-        if (rawUiState.livenessState == LivenessState.IDLE) {
-            rawUiState.copy(livenessState = LivenessState.ALIGN_FACE, promptMessage = "System active and secure.", leftEyeOpenProb = 1.0f, rightEyeOpenProb = 1.0f, smilingProb = 0.1f)
-        } else rawUiState
-    }
 
     LaunchedEffect(Unit) {
         val hasCameraPermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -510,7 +507,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SCREEN 3B: SEPARATE USER WORKSPACE HUB (Untouched core logic, matches expectations)
+    // SCREEN 3B: SEPARATE USER WORKSPACE HUB
     // =========================================================================
     else if (currentScreenState == AppNavigationState.USER_WORKSPACE) {
         Scaffold(
@@ -562,7 +559,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // AWS Sync Status Card indicating Background Auto Sync
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -625,7 +621,7 @@ fun DashboardScreen(
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
                 Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
 
-                    // 1. DYNAMIC AI STATUS MESSAGES (Blink & Smile Prompts)
+                    // 1. DYNAMIC AI STATUS MESSAGES
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -649,25 +645,22 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .height(320.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Color.Black) // Keeps black background until camera loads
+                            .background(Color.Black)
                             .border(BorderStroke(3.dp, if(uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFF0088FF)), RoundedCornerShape(24.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        // The Live ML-Kit Camera View
                         CameraPreviewView(
                             onLivenessResult = { isLive, left, right, smile ->
                                 viewModel.updateLivenessData(isLive, left, right, smile)
                             }
                         )
 
-                        // Reticle Overlay (Target circle)
                         Box(
                             modifier = Modifier
                                 .size(200.dp, 240.dp)
                                 .border(BorderStroke(3.dp, if(uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFF0088FF).copy(alpha = 0.5f)), CircleShape)
                         )
 
-                        // Scanning Line Animation (Hides when verified)
                         if (uiState.livenessState != LivenessState.SUCCESS_MATCHED) {
                             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                                 val lineY = size.height * scanAnimY
@@ -681,28 +674,29 @@ fun DashboardScreen(
                         }
                     }
 
-                    // 3. TRIGGER SCAN BUTTON
+                    // 3. THE FIXED MAIN BUTTON
                     Button(
                         onClick = { viewModel.startScanning() },
                         colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        enabled = uiState.livenessState == LivenessState.IDLE || uiState.livenessState == LivenessState.FAILED_TIMEOUT || uiState.livenessState == LivenessState.FAILED_UNKNOWN || uiState.livenessState == LivenessState.SUCCESS_MATCHED
+                        enabled = uiState.livenessState == LivenessState.IDLE ||
+                                uiState.livenessState == LivenessState.FAILED_TIMEOUT ||
+                                uiState.livenessState == LivenessState.FAILED_UNKNOWN ||
+                                uiState.livenessState == LivenessState.SUCCESS_MATCHED
                     ) {
                         Text(
-                            text = if (uiState.livenessState == LivenessState.SUCCESS_MATCHED) "Scan Complete (Sync Pending)" else "Start Live Liveness Check",
+                            text = if (uiState.livenessState == LivenessState.SUCCESS_MATCHED) "Scan Complete (Sync Pending)" else "Start Attendance Scanner",
                             fontWeight = FontWeight.Bold, fontSize = 14.sp
                         )
                     }
 
-                    // 4. HACKATHON DEMO BYPASS BUTTON
-                    // Extremely useful during live presentations if emulator/webcam lags
+                    // 4. FIXED HACKATHON DEMO BYPASS BUTTON
                     OutlinedButton(
                         onClick = {
-                            // This forcefully simulates a successful face match and saves offline attendance
-                            viewModel.employees.value.firstOrNull()?.let { employee ->
+                            employeesList.firstOrNull()?.let { employee ->
                                 viewModel.simulateCompleteLivenessForWorker(employee)
-                            } ?: Toast.makeText(context, "No mock employee found in DB!", Toast.LENGTH_SHORT).show()
+                            } ?: Toast.makeText(context, "Database syncing... Please wait!", Toast.LENGTH_SHORT).show()
                         },
                         border = BorderStroke(1.dp, Color.Gray),
                         shape = RoundedCornerShape(12.dp),
@@ -1091,7 +1085,6 @@ fun DashboardScreen(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                 week.forEach { day ->
                                     val isSelected = day == calendarSelectedDay
-                                    // Make week 4 (days 22+) red/absent arbitrarily for showcase to mimic attendance logs
                                     val isPresent = day < 22
 
                                     Box(
@@ -1110,13 +1103,11 @@ fun DashboardScreen(
                                         }
                                     }
                                 }
-                                // pad remaining boxes if incomplete week
                                 repeat(7 - week.size) { Box(modifier = Modifier.weight(1f).aspectRatio(1f)) }
                             }
                         }
                     }
 
-                    // Data for Selected Day
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text("Log Details for $calendarSelectedDay May", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black)
