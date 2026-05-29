@@ -2,7 +2,6 @@ package com.example.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.data.model.TransactionLog
 import kotlinx.coroutines.flow.Flow
@@ -12,10 +11,10 @@ interface TransactionLogDao {
     @Query("SELECT * FROM transaction_logs ORDER BY timestamp DESC")
     fun getAllLogs(): Flow<List<TransactionLog>>
 
-    @Query("SELECT * FROM transaction_logs WHERE isSynced = 0 ORDER BY timestamp DESC")
+    @Query("SELECT * FROM transaction_logs WHERE isSynced = 0 ORDER BY timestamp ASC")
     fun getUnsyncedLogs(): Flow<List<TransactionLog>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert
     suspend fun insertLog(log: TransactionLog)
 
     @Query("UPDATE transaction_logs SET isSynced = 1 WHERE isSynced = 0")

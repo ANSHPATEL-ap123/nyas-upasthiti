@@ -1,13 +1,14 @@
 package com.example.ui
 
-import android.util.Size
+import android.util.Log
+import android.view.ViewGroup
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,62 +20,65 @@ import java.util.concurrent.Executors
 @Composable
 fun CameraPreviewView(
     modifier: Modifier = Modifier,
-    onFaceDetected: (leftEyeOpen: Float?, rightEyeOpen: Float?, smilingProb: Float?) -> Unit,
-    onLuminanceMeasured: (Double) -> Unit
+    onLivenessResult: (isLive: Boolean, leftEye: Float, rightEye: Float, smile: Float) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
-    val cameraProviderFact = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraExecutor.shutdown()
-        }
-    }
-
     AndroidView(
+        modifier = modifier.fillMaxSize(),
         factory = { ctx ->
-            PreviewView(ctx).apply {
+            val previewView = PreviewView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                // FILL_CENTER taaki camera feed reticle (circle) ke pichhe poora cover ho jaye
                 scaleType = PreviewView.ScaleType.FILL_CENTER
-            }.also { previewView ->
-                cameraProviderFact.addListener({
-                    try {
-                        val cameraProvider = cameraProviderFact.get()
-
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
-                        }
-
-                        // Optimize analysis resolution for fast and light on-device AI classification
-                        val imageAnalysis = ImageAnalysis.Builder()
-                            .setTargetResolution(Size(480, 640))
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                            .also {
-                                it.setAnalyzer(
-                                    cameraExecutor,
-                                    FaceLivenessAnalyzer(onFaceDetected, onLuminanceMeasured)
-                                )
-                            }
-
-                        // FRONT CAMERA for secure face scans
-                        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }, ContextCompat.getMainExecutor(context))
             }
-        },
-        modifier = modifier
+
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+
+                // 1. Preview Use Case (Live Camera feed dikhane ke liye)
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                // 2. Image Analysis Use Case (ML Kit ko real-time frames bhejne ke liye)
+                val imageAnalyzer = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also {
+                        it.setAnalyzer(
+                            cameraExecutor,
+                            FaceLivenessAnalyzer { isLive, left, right, smile ->
+                                onLivenessResult(isLive, left, right, smile)
+                            }
+                        )
+                    }
+
+                // Front camera select kar rahe hain attendance ke liye
+                val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+                try {
+                    // Purane binds clear karo aur naye use cases bind karo
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageAnalyzer
+                    )
+                } catch (e: Exception) {
+                    Log.e("CameraPreviewView", "Use case binding failed", e)
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+
+            previewView
+        }
     )
 }

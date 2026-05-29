@@ -367,7 +367,7 @@ fun DashboardScreen(
                                                         Spacer(modifier = Modifier.height(6.dp))
                                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                             if (employee.verificationState == "PENDING") {
-                                                                // Verify button with lighter blue background and white text for better readability
+                                                                // Verify button
                                                                 Button(
                                                                     onClick = {
                                                                         activeWorkersRegistryList = activeWorkersRegistryList.map { if(it.id == employee.id) it.copy(verificationState = "VERIFIED") else it }
@@ -608,7 +608,10 @@ fun DashboardScreen(
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_ATTENDANCE_ENGINE) {
         val infiniteTransition = rememberInfiniteTransition()
-        val scanAnimY by infiniteTransition.animateFloat(initialValue = 0.1f, targetValue = 0.9f, animationSpec = infiniteRepeatable(animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Reverse))
+        val scanAnimY by infiniteTransition.animateFloat(
+            initialValue = 0.1f, targetValue = 0.9f,
+            animationSpec = infiniteRepeatable(animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Reverse)
+        )
 
         Scaffold(
             topBar = {
@@ -621,28 +624,94 @@ fun DashboardScreen(
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(lightThemeBackground)) {
                 Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Align Face Inside Target Reticle Area", color = nhaiBlue, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
 
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(24.dp)).background(Color.White).border(BorderStroke(2.dp, Color(0xFF0088FF)), RoundedCornerShape(24.dp))
-                            .drawWithContent {
-                                drawContent()
-                                val lineY = size.height * scanAnimY
-                                drawLine(color = Color(0xFF0088FF), start = Offset(0f, lineY), end = Offset(size.width, lineY), strokeWidth = 5f)
-                            },
-                        contentAlignment = Alignment.Center
+                    // 1. DYNAMIC AI STATUS MESSAGES (Blink & Smile Prompts)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.5.dp, if (uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFF0284C7)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Box(modifier = Modifier.size(180.dp, 220.dp).border(BorderStroke(2.dp, Color(0xFF0088FF).copy(alpha = 0.3f)), CircleShape))
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Face, contentDescription = null, tint = Color(0xFF0088FF).copy(alpha = 0.15f), modifier = Modifier.size(100.dp))
+                        Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(uiState.statusMessage, color = nhaiBlue, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = uiState.promptMessage.ifEmpty { "System active. Ready for biometric scan." },
+                                color = if (uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFFDC3545),
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center
+                            )
                         }
                     }
 
-                    Button(
-                        onClick = { viewModel.startScanning(); Toast.makeText(context, "Scanning Complete!", Toast.LENGTH_SHORT).show() },
-                        colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)
+                    // 2. ACTUAL CAMERA FEED & OVERLAYS
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(320.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color.Black) // Keeps black background until camera loads
+                            .border(BorderStroke(3.dp, if(uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFF0088FF)), RoundedCornerShape(24.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Trigger Live Biometric Scan Pipeline", fontWeight = FontWeight.Bold)
+                        // The Live ML-Kit Camera View
+                        CameraPreviewView(
+                            onLivenessResult = { isLive, left, right, smile ->
+                                viewModel.updateLivenessData(isLive, left, right, smile)
+                            }
+                        )
+
+                        // Reticle Overlay (Target circle)
+                        Box(
+                            modifier = Modifier
+                                .size(200.dp, 240.dp)
+                                .border(BorderStroke(3.dp, if(uiState.livenessState == LivenessState.SUCCESS_MATCHED) Color(0xFF16A34A) else Color(0xFF0088FF).copy(alpha = 0.5f)), CircleShape)
+                        )
+
+                        // Scanning Line Animation (Hides when verified)
+                        if (uiState.livenessState != LivenessState.SUCCESS_MATCHED) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                                val lineY = size.height * scanAnimY
+                                drawLine(
+                                    color = Color(0xFF0088FF),
+                                    start = Offset(0f, lineY),
+                                    end = Offset(size.width, lineY),
+                                    strokeWidth = 5f
+                                )
+                            }
+                        }
+                    }
+
+                    // 3. TRIGGER SCAN BUTTON
+                    Button(
+                        onClick = { viewModel.startScanning() },
+                        colors = ButtonDefaults.buttonColors(containerColor = nhaiBlue),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        enabled = uiState.livenessState == LivenessState.IDLE || uiState.livenessState == LivenessState.FAILED_TIMEOUT || uiState.livenessState == LivenessState.FAILED_UNKNOWN || uiState.livenessState == LivenessState.SUCCESS_MATCHED
+                    ) {
+                        Text(
+                            text = if (uiState.livenessState == LivenessState.SUCCESS_MATCHED) "Scan Complete (Sync Pending)" else "Start Live Liveness Check",
+                            fontWeight = FontWeight.Bold, fontSize = 14.sp
+                        )
+                    }
+
+                    // 4. HACKATHON DEMO BYPASS BUTTON
+                    // Extremely useful during live presentations if emulator/webcam lags
+                    OutlinedButton(
+                        onClick = {
+                            // This forcefully simulates a successful face match and saves offline attendance
+                            viewModel.employees.value.firstOrNull()?.let { employee ->
+                                viewModel.simulateCompleteLivenessForWorker(employee)
+                            } ?: Toast.makeText(context, "No mock employee found in DB!", Toast.LENGTH_SHORT).show()
+                        },
+                        border = BorderStroke(1.dp, Color.Gray),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                            Text("Demo Bypass (Force Success)", color = Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

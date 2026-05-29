@@ -238,6 +238,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
+     * Bridge function to connect CameraPreviewView's output to the UI State Machine
+     */
+    fun updateLivenessData(isLive: Boolean, leftEye: Float, rightEye: Float, smile: Float) {
+        onFaceFrameDetected(leftEye, rightEye, smile)
+    }
+
+    /**
      * Live ML Kit Face attributes processed frame-by-frame
      */
     fun onFaceFrameDetected(leftEyeOpen: Float?, rightEyeOpen: Float?, smileProb: Float?) {

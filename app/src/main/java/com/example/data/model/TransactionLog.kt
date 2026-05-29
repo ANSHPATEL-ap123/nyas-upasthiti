@@ -5,12 +5,14 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "transaction_logs")
 data class TransactionLog(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val employeeId: String,
-    val employeeName: String,
+    @PrimaryKey(autoGenerate = true) val logId: Int = 0,
+    val empId: String,
+    val empName: String,
     val timestamp: Long,
-    val latitude: Double,
-    val longitude: Double,
-    val isSynced: Boolean = false,
-    val encryptedPayload: String // Real AES ciphertext
+    val lat: Double,
+    val lng: Double,
+    val blinkPassed: Boolean,
+    val smilePassed: Boolean,
+    val matchDistance: Float,
+    val isSynced: Boolean = false // Sync flag for AWS queue
 )
