@@ -17,4 +17,7 @@ interface EmployeeDao {
 
     @Query("SELECT COUNT(*) FROM employees")
     suspend fun getEmployeeCount(): Int
+
+    @Query("SELECT * FROM employees WHERE id = :empId AND password = :password LIMIT 1")
+    suspend fun getEmployeeByCredentials(empId: String, password: String): Employee?
 }

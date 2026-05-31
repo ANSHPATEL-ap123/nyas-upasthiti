@@ -34,25 +34,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.R
+import com.example.data.model.Employee
 import com.example.data.model.TransactionLog
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-// Local Error-Free Structural Model for Workforce Registration Profiles
-data class LocalWorkerProfile(
-    val id: String,
-    val name: String,
-    val projectCode: String,
-    val dailyCheckIn: String = "09:00 AM",
-    val dailyCheckOut: String = "06:15 PM",
-    val monthlyRatio: String = "96.4%",
-    val totalHours: String = "176.5 Hrs",
-    val avgDailyHours: String = "8h 15m",
-    val verificationState: String = "PENDING",
-    val biometricStatus: String = "Active Vector Loaded"
-)
 
 // Data class for leave requests (Shared between Admin & User)
 data class LeaveRequest(
@@ -90,7 +77,9 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val unsyncedList by viewModel.unsyncedLogs.collectAsState()
     val lastSyncTs by viewModel.lastSyncTimestamp.collectAsState()
-    val employeesList by viewModel.employees.collectAsState() // Forces DB to provide data for bypass
+    val employeesList by viewModel.employees.collectAsState() // Real employee data from Room DB
+    val transactionLogsList by viewModel.transactionLogs.collectAsState() // Real attendance logs from Room DB
+    val loggedInEmployee by viewModel.loggedInEmployee.collectAsState() // Currently authenticated user
 
     // Central state navigation router
     var currentScreenState by remember { mutableStateOf(AppNavigationState.WELCOME_SPLASH) }
@@ -116,20 +105,8 @@ fun DashboardScreen(
     var selectedOverrideEmployeeId by remember { mutableStateOf("") }
     var overrideStatusInput by remember { mutableStateOf("PRESENT") }
 
-    // Workforce Database Cache Pool Layout Nodes
-    var activeWorkersRegistryList by remember {
-        mutableStateOf(
-            listOf(
-                LocalWorkerProfile("EMP101", "Ansh Patel", "NHAI-DEL-MUM-01", "08:58 AM", "06:05 PM", "97.2%", "180.5 Hrs", "8h 22m", "PENDING"),
-                LocalWorkerProfile("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", "09:02 AM", "06:12 PM", "95.8%", "172.0 Hrs", "7h 58m", "PENDING"),
-                LocalWorkerProfile("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", "08:45 AM", "05:55 PM", "98.1%", "184.0 Hrs", "8h 35m", "VERIFIED"),
-                LocalWorkerProfile("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", "09:15 AM", "06:30 PM", "94.5%", "168.5 Hrs", "7h 45m", "PENDING"),
-                LocalWorkerProfile("EMP105", "Vikram Singh", "NHAI-EAST-EXPRESS", "08:55 AM", "06:00 PM", "96.7%", "178.0 Hrs", "8h 10m", "PENDING")
-            )
-        )
-    }
-
-    var inspectedWorkerProfile by remember { mutableStateOf<LocalWorkerProfile?>(null) }
+    // Inspected employee for calendar dialog (now using real Employee from Room DB)
+    var inspectedEmployee by remember { mutableStateOf<Employee?>(null) }
     var calendarSelectedDay by remember { mutableStateOf(25) }
 
     // Leave Portal State (Shared)
@@ -177,6 +154,10 @@ fun DashboardScreen(
             listOf("10 May", "08:45 AM", "06:18 PM", "9.55")
         )
     }
+
+    // Helper to format timestamp from TransactionLog
+    val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+    val dateTimeFormatter = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
 
     // =========================================================================
     // SCREEN 1: WELCOME SPLASH LANDING PAGE
@@ -240,17 +221,7 @@ fun DashboardScreen(
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0)), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            OutlinedTextField(value = selectedRole, onValueChange = {}, readOnly = true, label = { Text("System Role Profiling") }, leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = Color(0xFF0284C7)) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.Gray) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = inputFieldColors)
-                            Box(modifier = Modifier.matchParentSize().clickable { isRoleExpanded = true })
-                            DropdownMenu(expanded = isRoleExpanded, onDismissRequest = { isRoleExpanded = false }, modifier = Modifier.fillMaxWidth(0.75f).background(Color.White)) {
-                                listOf("ADMIN", "USER").forEach { role ->
-                                    DropdownMenuItem(text = { Text(role, color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) }, onClick = { selectedRole = role; isRoleExpanded = false })
-                                }
-                            }
-                        }
-
-                        OutlinedTextField(value = usernameInput, onValueChange = { usernameInput = it }, label = { Text("Gate Identifier / Username") }, leadingIcon = { Icon(Icons.Default.PersonOutline, contentDescription = null, tint = Color(0xFF64748B)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
+                        OutlinedTextField(value = usernameInput, onValueChange = { usernameInput = it }, label = { Text("Employee ID (e.g. EMP101)") }, leadingIcon = { Icon(Icons.Default.PersonOutline, contentDescription = null, tint = Color(0xFF64748B)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
                         OutlinedTextField(value = passwordInput, onValueChange = { passwordInput = it }, label = { Text("Access Cipher Code") }, leadingIcon = { Icon(Icons.Default.LockOpen, contentDescription = null, tint = Color(0xFF64748B)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
 
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -260,12 +231,25 @@ fun DashboardScreen(
                             OutlinedTextField(value = captchaInput, onValueChange = { captchaInput = it }, placeholder = { Text("Security Code*", fontSize = 11.sp) }, modifier = Modifier.weight(1.2f), textStyle = visibleBlackTextStyle, colors = inputFieldColors, singleLine = true)
                         }
 
+                        // REAL AUTHENTICATION: Checks Employee ID + Password against Room DB
                         Button(
                             onClick = {
                                 if (usernameInput.isNotEmpty() && passwordInput.isNotEmpty()) {
-                                    if (selectedRole == "ADMIN") { lastWorkspaceOrigin = AppNavigationState.ADMIN_WORKSPACE; currentScreenState = AppNavigationState.ADMIN_WORKSPACE }
-                                    else { lastWorkspaceOrigin = AppNavigationState.USER_WORKSPACE; currentScreenState = AppNavigationState.USER_WORKSPACE }
-                                    Toast.makeText(context, "Logged in as $selectedRole", Toast.LENGTH_SHORT).show()
+                                    viewModel.attemptLogin(usernameInput.trim(), passwordInput.trim()) { employee ->
+                                        if (employee != null) {
+                                            // Route strictly based on DB role
+                                            if (employee.role == "ADMIN") {
+                                                lastWorkspaceOrigin = AppNavigationState.ADMIN_WORKSPACE
+                                                currentScreenState = AppNavigationState.ADMIN_WORKSPACE
+                                            } else {
+                                                lastWorkspaceOrigin = AppNavigationState.USER_WORKSPACE
+                                                currentScreenState = AppNavigationState.USER_WORKSPACE
+                                            }
+                                            Toast.makeText(context, "Welcome, ${employee.name} (${employee.role})", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "❌ Invalid Employee ID or Password!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 } else Toast.makeText(context, "Please complete fields", Toast.LENGTH_SHORT).show()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0088FF)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)
@@ -273,8 +257,19 @@ fun DashboardScreen(
 
                         OutlinedButton(
                             onClick = {
-                                if (selectedRole == "ADMIN") { usernameInput = "admin_portal"; passwordInput = "nhai_admin"; captchaInput = currentCaptchaString; lastWorkspaceOrigin = AppNavigationState.ADMIN_WORKSPACE; currentScreenState = AppNavigationState.ADMIN_WORKSPACE }
-                                else { usernameInput = "field_user"; passwordInput = "nhai_user"; captchaInput = currentCaptchaString; lastWorkspaceOrigin = AppNavigationState.USER_WORKSPACE; currentScreenState = AppNavigationState.USER_WORKSPACE }
+                                // Bypass: auto-login as first available employee based on dropdown
+                                if (selectedRole == "ADMIN") {
+                                    // Find admin employee from DB or use fallback
+                                    val adminEmp = employeesList.firstOrNull { it.role == "ADMIN" }
+                                    viewModel.setLoggedInEmployee(adminEmp)
+                                    usernameInput = adminEmp?.id ?: "EMP999"; passwordInput = adminEmp?.password ?: "admin"; captchaInput = currentCaptchaString
+                                    lastWorkspaceOrigin = AppNavigationState.ADMIN_WORKSPACE; currentScreenState = AppNavigationState.ADMIN_WORKSPACE
+                                } else {
+                                    val userEmp = employeesList.firstOrNull { it.role == "USER" }
+                                    viewModel.setLoggedInEmployee(userEmp)
+                                    usernameInput = userEmp?.id ?: "EMP101"; passwordInput = userEmp?.password ?: "1234"; captchaInput = currentCaptchaString
+                                    lastWorkspaceOrigin = AppNavigationState.USER_WORKSPACE; currentScreenState = AppNavigationState.USER_WORKSPACE
+                                }
                                 Toast.makeText(context, "Bypass active: $selectedRole Mode", Toast.LENGTH_SHORT).show()
                             },
                             border = BorderStroke(1.5.dp, Color(0xFF16A34A)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF16A34A))
@@ -282,6 +277,17 @@ fun DashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Text("LOGIN AS GUEST / SIMULATOR BYPASS", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+
+                        // Role selector for bypass only
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(value = selectedRole, onValueChange = {}, readOnly = true, label = { Text("Bypass Role (for demo only)") }, leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = Color(0xFF0284C7)) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.Gray) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = inputFieldColors)
+                            Box(modifier = Modifier.matchParentSize().clickable { isRoleExpanded = true })
+                            DropdownMenu(expanded = isRoleExpanded, onDismissRequest = { isRoleExpanded = false }, modifier = Modifier.fillMaxWidth(0.75f).background(Color.White)) {
+                                listOf("ADMIN", "USER").forEach { role ->
+                                    DropdownMenuItem(text = { Text(role, color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) }, onClick = { selectedRole = role; isRoleExpanded = false })
+                                }
                             }
                         }
                     }
@@ -303,7 +309,7 @@ fun DashboardScreen(
                             badge = { if(adminNotifications > 0) Badge(containerColor = Color(0xFFEA580C)) { Text(adminNotifications.toString(), color = Color.White) } },
                             modifier = Modifier.padding(horizontal = 8.dp).clickable { adminNotifications = 0; Toast.makeText(context, "Notifications flushed", Toast.LENGTH_SHORT).show() }
                         ) { Icon(Icons.Default.Notifications, contentDescription = "Communications Node", tint = Color.White) }
-                        IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) }
+                        IconButton(onClick = { viewModel.setLoggedInEmployee(null); currentScreenState = AppNavigationState.WELCOME_SPLASH }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White) }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = nhaiBlue)
                 )
@@ -340,61 +346,73 @@ fun DashboardScreen(
                             }
                         }
                         1 -> {
-                            // Daily Logs View
+                            // ===== DAILY LOGS: Now reading from real Room DB transactionLogs =====
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text("Personnel Daily Log Validation Desk:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = nhaiBlue)
                                     Button(
                                         onClick = {
-                                            activeWorkersRegistryList = activeWorkersRegistryList.map { it.copy(verificationState = "VERIFIED") }
+                                            viewModel.syncOfflineQueue()
                                             Toast.makeText(context, "All logs verified globally & Synced to AWS!", Toast.LENGTH_SHORT).show()
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                     ) { Text("Verify All Logs", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) }
                                 }
 
-                                Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    activeWorkersRegistryList.forEach { employee ->
-                                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                                            Column(modifier = Modifier.padding(10.dp)) {
-                                                Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp)).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(text = employee.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
-                                                        Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
-                                                        Spacer(modifier = Modifier.height(6.dp))
-                                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                            if (employee.verificationState == "PENDING") {
-                                                                // Verify button
-                                                                Button(
-                                                                    onClick = {
-                                                                        activeWorkersRegistryList = activeWorkersRegistryList.map { if(it.id == employee.id) it.copy(verificationState = "VERIFIED") else it }
-                                                                        userNotifications++
-                                                                        Toast.makeText(context, "Verified & Synced to AWS", Toast.LENGTH_SHORT).show()
-                                                                    },
-                                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF60A5FA), contentColor = Color.White),
-                                                                    modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                                                ) { Text("Verify", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White) }
-
-                                                                // Reject button
-                                                                Button(
-                                                                    onClick = {
-                                                                        activeWorkersRegistryList = activeWorkersRegistryList.map { if(it.id == employee.id) it.copy(verificationState = "REJECTED") else it }
-                                                                        userNotifications++
-                                                                        Toast.makeText(context, "Rejected & Synced to AWS. User notified.", Toast.LENGTH_SHORT).show()
-                                                                    },
-                                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444), contentColor = Color.White),
-                                                                    modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                                                ) { Text("Reject", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White) }
-                                                            } else {
-                                                                val iconColor = if(employee.verificationState == "VERIFIED") Color(0xFF16A34A) else Color(0xFFDC3545)
-                                                                Icon(imageVector = if(employee.verificationState == "VERIFIED") Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp).padding(horizontal = 4.dp))
-                                                                Text(employee.verificationState, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = iconColor)
+                                if (transactionLogsList.isEmpty()) {
+                                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.Default.Inbox, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text("No attendance logs recorded yet.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                                            Text("Use 'Mark Attendance' to generate biometric logs.", fontSize = 11.sp, color = Color(0xFF94A3B8), textAlign = TextAlign.Center)
+                                        }
+                                    }
+                                } else {
+                                    Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        transactionLogsList.forEach { log ->
+                                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                                                Column(modifier = Modifier.padding(10.dp)) {
+                                                    Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp)).padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                            Text(text = log.empName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
+                                                            Text("ID: ${log.empId} | Match: ${String.format("%.3f", log.matchDistance)}", fontSize = 11.sp, color = Color.Gray)
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(if (log.blinkPassed) Color(0xFF16A34A).copy(alpha = 0.15f) else Color(0xFFDC3545).copy(alpha = 0.15f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                                                    Text(if (log.blinkPassed) "Blink ✓" else "Blink ✗", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (log.blinkPassed) Color(0xFF16A34A) else Color(0xFFDC3545))
+                                                                }
+                                                                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(if (log.smilePassed) Color(0xFF16A34A).copy(alpha = 0.15f) else Color(0xFFDC3545).copy(alpha = 0.15f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                                                    Text(if (log.smilePassed) "Smile ✓" else "Smile ✗", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (log.smilePassed) Color(0xFF16A34A) else Color(0xFFDC3545))
+                                                                }
+                                                            }
+                                                            Spacer(modifier = Modifier.height(6.dp))
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                                if (!log.isSynced) {
+                                                                    // Verify button
+                                                                    Button(
+                                                                        onClick = {
+                                                                            viewModel.markLogVerified(log.logId)
+                                                                            userNotifications++
+                                                                            Toast.makeText(context, "Verified & Synced to AWS", Toast.LENGTH_SHORT).show()
+                                                                        },
+                                                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF60A5FA), contentColor = Color.White),
+                                                                        modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                                    ) { Text("Verify", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White) }
+                                                                } else {
+                                                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(20.dp).padding(horizontal = 4.dp))
+                                                                    Text("VERIFIED", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+                                                                }
                                                             }
                                                         }
-                                                    }
-                                                    Column(horizontalAlignment = Alignment.End) {
-                                                        Text("In: ${employee.dailyCheckIn}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
-                                                        Text("Out: ${employee.dailyCheckOut}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                                                        Column(horizontalAlignment = Alignment.End) {
+                                                            Text(timeFormatter.format(Date(log.timestamp)), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B3A6B))
+                                                            Text(SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(log.timestamp)), fontSize = 10.sp, color = Color.Gray)
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(if (log.isSynced) Color(0xFF16A34A).copy(alpha = 0.1f) else Color(0xFFE67E22).copy(alpha = 0.1f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                                                Text(if (log.isSynced) "Synced" else "Pending", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (log.isSynced) Color(0xFF16A34A) else Color(0xFFE67E22))
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -404,21 +422,25 @@ fun DashboardScreen(
                             }
                         }
                         2 -> {
-                            // Monthly Report Section
+                            // ===== MONTHLY REPORT: Now reading from real Room DB employees =====
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("Select Employee For Monthly Calendar Record:", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = nhaiBlue)
                                 Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFCBD5E1))) {
                                     Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        activeWorkersRegistryList.forEach { employee ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).clickable { inspectedWorkerProfile = employee }.padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column {
-                                                    Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-                                                    Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
+                                        if (employeesList.isEmpty()) {
+                                            Text("Loading employees from database...", fontSize = 13.sp, color = Color.Gray)
+                                        } else {
+                                            employeesList.forEach { employee ->
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).clickable { inspectedEmployee = employee }.padding(12.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column {
+                                                        Text(employee.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                                                        Text("ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 11.sp, color = Color.Gray)
+                                                    }
+                                                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue)
                                                 }
-                                                Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue)
                                             }
                                         }
                                     }
@@ -520,7 +542,7 @@ fun DashboardScreen(
                                 Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
                             }
                         }
-                        IconButton(onClick = { currentScreenState = AppNavigationState.WELCOME_SPLASH }) {
+                        IconButton(onClick = { viewModel.setLoggedInEmployee(null); currentScreenState = AppNavigationState.WELCOME_SPLASH }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
                         }
                     },
@@ -546,14 +568,20 @@ fun DashboardScreen(
                                 Text("Your Personal Daily Shift Activity Logs", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color.Black)
                             }
                             HorizontalDivider(color = Color(0xFFE2E8F0))
+                            // Show real data from latest transaction log for the logged-in user
+                            val userLogs = transactionLogsList.filter { it.empId == (loggedInEmployee?.id ?: "") }
+                            val latestLog = userLogs.firstOrNull()
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column {
                                     Text("DAILY LOG-IN TIME", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                    Text("09:00 AM (ISO Verified)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF28A745))
+                                    Text(
+                                        text = if (latestLog != null) "${timeFormatter.format(Date(latestLog.timestamp))} (Verified)" else "No logs today",
+                                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF28A745)
+                                    )
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("DAILY LOG-OUT TIME", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                    Text("06:15 PM (Terminal Lock)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
+                                    Text("TOTAL LOGS", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text("${userLogs.size} Records", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
                                 }
                             }
                         }
@@ -601,6 +629,7 @@ fun DashboardScreen(
 
     // =========================================================================
     // SUB-PAGE 1: LIVE ADVANCED BIOMETRIC VERIFICATION (Mark Attendance)
+    // DO NOT TOUCH — TASK_ATTENDANCE_ENGINE block preserved exactly as-is
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_ATTENDANCE_ENGINE) {
         val infiniteTransition = rememberInfiniteTransition()
@@ -744,7 +773,7 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // ADMIN SUB-PAGE 3: WORKFORCE PROFILES
+    // ADMIN SUB-PAGE 3: WORKFORCE PROFILES — Now from real Room DB employees
     // =========================================================================
     else if (currentScreenState == AppNavigationState.TASK_WORKFORCE_PROFILES) {
         Scaffold(
@@ -760,30 +789,43 @@ fun DashboardScreen(
                 Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("All Registered Field Operators Data", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
 
-                    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        activeWorkersRegistryList.forEach { profile ->
-                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0)), shape = RoundedCornerShape(12.dp)) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                        Column {
-                                            Text(profile.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color.Black)
-                                            Text("Emp ID: ${profile.id} | Site: ${profile.projectCode}", fontSize = 12.sp, color = Color.Gray)
+                    if (employeesList.isEmpty()) {
+                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                            Text("Loading employee profiles from database...", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(16.dp))
+                        }
+                    } else {
+                        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            employeesList.forEach { employee ->
+                                // Count logs for this employee from real transaction data
+                                val empLogs = transactionLogsList.filter { it.empId == employee.id }
+                                val latestLog = empLogs.firstOrNull()
+
+                                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0)), shape = RoundedCornerShape(12.dp)) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            Column {
+                                                Text(employee.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color.Black)
+                                                Text("Emp ID: ${employee.id} | Site: ${employee.projectCode}", fontSize = 12.sp, color = Color.Gray)
+                                            }
+                                            Icon(Icons.Default.AccountCircle, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(36.dp))
                                         }
-                                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(36.dp))
-                                    }
-                                    HorizontalDivider(color = Color(0xFFF1F5F9))
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Column {
-                                            Text("Check-In", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                            Text(profile.dailyCheckIn, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
-                                        }
-                                        Column {
-                                            Text("Check-Out", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                            Text(profile.dailyCheckOut, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545))
-                                        }
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text("Total Hrs", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                            Text(profile.totalHours, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
+                                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Column {
+                                                Text("Role", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                                Text(employee.role, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (employee.role == "ADMIN") Color(0xFFE67E22) else Color(0xFF16A34A))
+                                            }
+                                            Column {
+                                                Text("Last Scan", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    if (latestLog != null) timeFormatter.format(Date(latestLog.timestamp)) else "No records",
+                                                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC3545)
+                                                )
+                                            }
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                Text("Total Logs", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                                Text("${empLogs.size} Records", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = nhaiBlue)
+                                            }
                                         }
                                     }
                                 }
@@ -796,9 +838,15 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // SUB-PAGE 7: MY PROFILE (USER_PROFILE)
+    // SUB-PAGE 7: MY PROFILE (USER_PROFILE) — Now shows real logged-in employee data
     // =========================================================================
     else if (currentScreenState == AppNavigationState.USER_PROFILE) {
+        val profileEmp = loggedInEmployee
+        val profileName = profileEmp?.name ?: "Field Operator"
+        val profileId = profileEmp?.id ?: "N/A"
+        val profileProject = profileEmp?.projectCode ?: "N/A"
+        val profileAdminId = profileEmp?.adminId ?: "ADM001"
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -826,22 +874,24 @@ fun DashboardScreen(
                             }
                             HorizontalDivider(color = Color(0xFFE2E8F0))
 
-                            ProfileDetailRow("Employee Name", "Ansh Patel")
-                            ProfileDetailRow("Employee ID", "EMP101")
-                            ProfileDetailRow("Date of Birth", "15 March 1995")
-                            ProfileDetailRow("Assigned Admin", "Rajesh Kumar")
-                            ProfileDetailRow("Admin ID", "ADM001")
+                            ProfileDetailRow("Employee Name", profileName)
+                            ProfileDetailRow("Employee ID", profileId)
+                            ProfileDetailRow("Project Site", profileProject)
+                            ProfileDetailRow("Role", profileEmp?.role ?: "USER")
+                            ProfileDetailRow("Admin ID", profileAdminId)
                         }
                     }
 
+                    // Show real attendance stats from transaction logs
+                    val myLogs = transactionLogsList.filter { it.empId == profileId }
                     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = nhaiBlue)) {
                         Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
-                                Text("Average Monthly Working Hours", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
+                                Text("Total Attendance Records", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
                                 Text("May 2026", fontSize = 11.sp, color = Color.White.copy(alpha = 0.6f))
                             }
                             Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.15f)).padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                Text("176.5 Hrs", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                Text("${myLogs.size} Logs", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                             }
                         }
                     }
@@ -887,6 +937,10 @@ fun DashboardScreen(
         val daysInMonth = remember { tempCal.getActualMaximum(Calendar.DAY_OF_MONTH) }
         val todayDate = remember { Calendar.getInstance().get(Calendar.DAY_OF_MONTH) }
         val leaveTypes = listOf("Casual Leave", "Sick Leave", "Medical Leave", "Normal Holidays")
+
+        // Use logged-in employee data for leave requests
+        val leaveEmpId = loggedInEmployee?.id ?: "EMP101"
+        val leaveEmpName = loggedInEmployee?.name ?: "Ansh Patel"
 
         Scaffold(
             topBar = {
@@ -992,7 +1046,7 @@ fun DashboardScreen(
                                 val todaySdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
                                 val todayStr = todaySdf.format(Date())
 
-                                val newRequest = LeaveRequest(startDate = startStr, endDate = endStr, leaveType = selectedLeaveType, status = "Pending", appliedOn = todayStr, empId = "EMP101", empName = "Ansh Patel")
+                                val newRequest = LeaveRequest(startDate = startStr, endDate = endStr, leaveType = selectedLeaveType, status = "Pending", appliedOn = todayStr, empId = leaveEmpId, empName = leaveEmpName)
                                 globalLeaveRequests = listOf(newRequest) + globalLeaveRequests
                                 selectedStartDay = -1; selectedEndDay = -1
                                 Toast.makeText(context, "Leave request submitted for admin verification", Toast.LENGTH_SHORT).show()
@@ -1035,19 +1089,22 @@ fun DashboardScreen(
     }
 
     // =========================================================================
-    // CALENDAR GRID MONTHLY REPORT SHEET FOR ADMIN
+    // CALENDAR GRID MONTHLY REPORT SHEET FOR ADMIN — Now uses real Employee
     // =========================================================================
-    inspectedWorkerProfile?.let { profile ->
+    inspectedEmployee?.let { employee ->
+        // Count real transaction logs for this employee
+        val empLogs = transactionLogsList.filter { it.empId == employee.id }
+
         AlertDialog(
-            onDismissRequest = { inspectedWorkerProfile = null },
+            onDismissRequest = { inspectedEmployee = null },
             shape = RoundedCornerShape(24.dp),
             containerColor = Color.White,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = nhaiBlue, modifier = Modifier.size(32.dp))
                     Column {
-                        Text(text = profile.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color.Black)
-                        Text(text = "Monthly Ledger - ${profile.id}", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = employee.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color.Black)
+                        Text(text = "Monthly Ledger - ${employee.id}", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             },
@@ -1058,14 +1115,14 @@ fun DashboardScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                             Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("TOTAL TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                Text(profile.totalHours, fontSize = 15.sp, fontWeight = FontWeight.Black, color = nhaiBlue)
+                                Text("TOTAL LOGS", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                Text("${empLogs.size} Records", fontSize = 15.sp, fontWeight = FontWeight.Black, color = nhaiBlue)
                             }
                         }
                         Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
                             Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("AVG DAILY", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                Text(profile.avgDailyHours, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color.Black)
+                                Text("SITE CODE", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                Text(employee.projectCode, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color.Black)
                             }
                         }
                     }
@@ -1114,8 +1171,8 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             if (calendarSelectedDay < 22) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Login: ${profile.dailyCheckIn}", fontSize = 11.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
-                                    Text("Logout: ${profile.dailyCheckOut}", fontSize = 11.sp, color = Color(0xFFDC3545), fontWeight = FontWeight.Bold)
+                                    Text("Status: PRESENT", fontSize = 11.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                                    Text("Logs: ${empLogs.size}", fontSize = 11.sp, color = nhaiBlue, fontWeight = FontWeight.Bold)
                                 }
                             } else {
                                 Text("Status: ABSENT / ON LEAVE", fontSize = 11.sp, color = Color(0xFFDC3545), fontWeight = FontWeight.Bold)
@@ -1124,7 +1181,7 @@ fun DashboardScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { inspectedWorkerProfile = null }) { Text("Close Analytics Frame", fontWeight = FontWeight.Bold, color = nhaiBlue) } }
+            confirmButton = { TextButton(onClick = { inspectedEmployee = null }) { Text("Close Analytics Frame", fontWeight = FontWeight.Bold, color = nhaiBlue) } }
         )
     }
 }

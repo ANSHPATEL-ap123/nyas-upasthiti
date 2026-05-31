@@ -65,6 +65,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _lastSyncTimestamp = MutableStateFlow(0L)
     val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
 
+    // Currently logged-in employee (set after successful authentication)
+    private val _loggedInEmployee = MutableStateFlow<Employee?>(null)
+    val loggedInEmployee: StateFlow<Employee?> = _loggedInEmployee.asStateFlow()
+
     // Connectivity callback for auto-sync
     private val connectivityManager =
         application.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -128,6 +132,36 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             connectivityManager.unregisterNetworkCallback(networkCallback)
         } catch (_: Exception) {
             // Already unregistered or never registered
+        }
+    }
+
+    /**
+     * Real authentication against Room DB.
+     * Looks up Employee by ID + password, sets loggedInEmployee on success.
+     */
+    fun attemptLogin(empId: String, password: String, onResult: (Employee?) -> Unit) {
+        viewModelScope.launch {
+            val employee = repository.authenticateEmployee(empId, password)
+            if (employee != null) {
+                _loggedInEmployee.value = employee
+            }
+            onResult(employee)
+        }
+    }
+
+    /**
+     * Set logged-in employee directly (used by bypass/demo login)
+     */
+    fun setLoggedInEmployee(employee: Employee?) {
+        _loggedInEmployee.value = employee
+    }
+
+    /**
+     * Mark a single transaction log as verified/synced by its logId
+     */
+    fun markLogVerified(logId: Int) {
+        viewModelScope.launch {
+            repository.markLogAsVerified(logId)
         }
     }
 

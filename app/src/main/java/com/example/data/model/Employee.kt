@@ -12,7 +12,8 @@ data class Employee(
     // 5D Mock Vector for offline face matching simulation
     val f1: Float, val f2: Float, val f3: Float, val f4: Float, val f5: Float,
     val role: String = "USER",
-    val adminId: String = "ADM001"
+    val adminId: String = "ADM001",
+    val password: String = "1234"
 ) {
     // Euclidean distance calculation live camera feed se match karne ke liye
     fun calculateDistance(liveVector: FloatArray): Float {

@@ -20,6 +20,9 @@ interface TransactionLogDao {
     @Query("UPDATE transaction_logs SET isSynced = 1 WHERE isSynced = 0")
     suspend fun markAllAsSynced()
 
+    @Query("UPDATE transaction_logs SET isSynced = 1 WHERE logId = :logId")
+    suspend fun markLogAsSynced(logId: Int)
+
     @Query("DELETE FROM transaction_logs WHERE isSynced = 1")
     suspend fun clearSyncedLogs()
 

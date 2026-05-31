@@ -18,10 +18,11 @@ class AttendanceRepository(
         // First run pe mock data load karega
         if (employeeDao.getEmployeeCount() == 0) {
             val dummyWorkers = listOf(
-                Employee("EMP101", "Ansh Patel", "NHAI-DEL-MUM-01", 0.15f, 0.45f, 0.15f, 0.45f, 0.25f),
-                Employee("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", 0.5f, 0.5f, 0.5f, 0.5f, 0.5f),
-                Employee("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", 0.2f, 0.8f, 0.2f, 0.4f, 0.6f),
-                Employee("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", 0.7f, 0.3f, 0.6f, 0.2f, 0.9f)
+                Employee("EMP101", "Ansh Patel", "NHAI-DEL-MUM-01", 0.15f, 0.45f, 0.15f, 0.45f, 0.25f, role = "USER", password = "1234"),
+                Employee("EMP102", "Priya Sharma", "NHAI-DEL-MUM-02", 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, role = "USER", password = "1234"),
+                Employee("EMP103", "Rajesh Patel", "NHAI-UP-CORRIDOR", 0.2f, 0.8f, 0.2f, 0.4f, 0.6f, role = "USER", password = "1234"),
+                Employee("EMP104", "Sunita Rao", "NHAI-SOUTH-HIGHWAY", 0.7f, 0.3f, 0.6f, 0.2f, 0.9f, role = "USER", password = "1234"),
+                Employee("EMP999", "Master Admin", "HEADQUARTERS", 0.4f, 0.4f, 0.4f, 0.4f, 0.4f, role = "ADMIN", adminId = "ADM001", password = "admin")
             )
             employeeDao.insertAll(dummyWorkers)
         }
@@ -49,6 +50,14 @@ class AttendanceRepository(
 
     suspend fun syncLogsToServer() {
         logDao.markAllAsSynced()
+    }
+
+    suspend fun markLogAsVerified(logId: Int) {
+        logDao.markLogAsSynced(logId)
+    }
+
+    suspend fun authenticateEmployee(empId: String, password: String): Employee? {
+        return employeeDao.getEmployeeByCredentials(empId, password)
     }
 
     suspend fun clearSyncedQueue() {

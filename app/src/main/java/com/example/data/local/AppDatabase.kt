@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import com.example.data.model.Employee
 import com.example.data.model.TransactionLog
 
-@Database(entities = [Employee::class, TransactionLog::class], version = 1, exportSchema = false)
+@Database(entities = [Employee::class, TransactionLog::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun employeeDao(): EmployeeDao
     abstract fun transactionLogDao(): TransactionLogDao
@@ -22,7 +22,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "nyas_attendance_db"
-                ).build()
+                ).fallbackToDestructiveMigration()
+                 .build()
                 INSTANCE = instance
                 instance
             }
